@@ -1,0 +1,34 @@
+import express from "express";
+import {
+  register,
+  login,
+  logout,
+  me,
+  changePassword,
+  updateProfile,
+  getUserByPhoneAdmin,
+  getAllUsers
+} from "../controllers/auth.controller.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import { admin } from "../middleware/admin.middleware.js";
+import upload from "../middleware/uploadMiddleware.js";
+const router = express.Router();
+
+router.post("/register", register);
+router.post("/login", login);
+router.post("/logout", authMiddleware, logout);
+router.get("/me", authMiddleware, me);
+router.put(
+  "/profile",
+  authMiddleware,
+  upload.single("profilePic"), 
+  updateProfile
+);
+
+router.post("/change-password", authMiddleware, changePassword);
+
+router.get("/admin/search", authMiddleware, admin, getUserByPhoneAdmin);
+
+
+router.get("/users", authMiddleware, admin, getAllUsers);
+export default router;
