@@ -1,6 +1,7 @@
 import Order from "../models/Order.js";
 import OrderItem from "../models/OrderItem.js";
 import { Op } from "sequelize";
+import sequelize from "../config/db.js";
 
 const getSalesFilter = (vendorId = null, dateFilter = {}) => {
   const where = {

@@ -100,27 +100,18 @@ export const register = async (req, res) => {
       role: "user",
     });
 
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" },
-    );
-
-    sendTokenCookie(res, token);
-
+   
     res.status(201).json({
       message: "User registered successfully",
-      token: token,
       user: {
         id: user.id,
         name: user.name,
         phone: user.phone,
         email: user.email,
         role: user.role,
-        walletBalance: user.walletBalance,
-        profilePic: user.profilePic,
       },
     });
+    
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Internal server error" });
