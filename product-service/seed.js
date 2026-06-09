@@ -72,7 +72,7 @@ const fetchLiveVendorId = async (seedPassword) => {
       );
     }
 
-    const loginResponse = await axios.post(`${ADMIN_SERVICE_URL}/login`, {
+    const loginResponse = await axios.post(`${ADMIN_SERVICE_URL}/api/admin/login`, {
       phone: "9999999999",
       password: seedPassword,
     });
@@ -87,7 +87,7 @@ const fetchLiveVendorId = async (seedPassword) => {
     console.log("✅ Admin logged in! Fetching vendors...");
 
     const vendorResponse = await axios.get(
-      `${VENDOR_SERVICE_ADMIN_URL}/vendors`,
+      `${VENDOR_SERVICE_ADMIN_URL}/api/admin/vendors`,
       {
         headers: {
           Cookie: jwtCookie,

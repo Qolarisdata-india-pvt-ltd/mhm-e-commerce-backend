@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import sequelize from "./config/db.js";
 import productRoutes from "./routes/product.routes.js";
+import * as storage from "./config/storage.js";
 
 dotenv.config();
 
@@ -9,6 +10,11 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve locally-stored uploads when the local storage driver is active.
+if (storage.isLocal()) {
+  app.use("/uploads", express.static(storage.uploadDir));
+}
 
 app.use("/api/products", productRoutes);
 

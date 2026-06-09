@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import User from "../models/User.js";
-import minioClient, { initBucket } from "../config/minioClient.js";
+import * as storage from "../config/storage.js";
 import redis from "../config/redis.js";
 import Address from "../models/Address.js";
 import { sendTokenCookie, clearTokenCookie } from "../utils/cookie.util.js";
@@ -11,7 +11,9 @@ import dotenv from "dotenv";
 dotenv.config();
 const BUCKET_NAME = "user-profiles";
 
-initBucket(BUCKET_NAME);
+storage
+  .ensureBucket(BUCKET_NAME)
+  .catch((err) => console.error("Storage ensureBucket failed:", err));
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -321,14 +323,12 @@ export const updateProfile = async (req, res) => {
       const file = req.file;
       const fileName = `${Date.now()}-${file.originalname.replaceAll(/\s+/g, "-")}`;
 
-      await minioClient.putObject(
+      user.profilePic = await storage.saveObject(
         BUCKET_NAME,
         fileName,
         file.buffer,
-        file.size,
-        { "Content-Type": file.mimetype },
+        file.mimetype,
       );
-      user.profilePic = `${process.env.MINIO_BUCKET_URL}/${BUCKET_NAME}/${fileName}`;
     }
 
     await user.save();

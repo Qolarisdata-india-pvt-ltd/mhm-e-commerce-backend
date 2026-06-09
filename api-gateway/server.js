@@ -84,6 +84,10 @@ const proxy = (target) => {
     proxyTimeout: 10000,
     timeout: 10000,
 
+    // Express strips the mount path (e.g. "/api/products") before the proxy
+    // sees the request, so forward the original full URL to the microservice.
+    pathRewrite: (path, req) => req.originalUrl,
+
     onProxyReq: (proxyReq, req, res) => {
       const correlationId =
         req.headers["x-correlation-id"] || crypto.randomUUID();

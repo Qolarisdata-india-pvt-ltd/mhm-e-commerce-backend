@@ -4,15 +4,21 @@ import cookieParser from "cookie-parser"; // Added
 import csrf from "csurf"; // Added
 
 import sequelize from "./config/db.js";
-import defineAssociations from "./models/associations.js";
+import defineAssociations from "./models/Associations.js";
 import authRoutes from "./routes/auth.routes.js";
 import addressRoutes from "./routes/address.routes.js";
+import * as storage from "./config/storage.js";
 dotenv.config();
 
 const app = express();
 app.disable("x-powered-by");
 app.use(express.json());
-app.use(cookieParser()); 
+app.use(cookieParser());
+
+// Serve locally-stored uploads when the local storage driver is active.
+if (storage.isLocal()) {
+  app.use("/uploads", express.static(storage.uploadDir));
+}
 
 const csrfProtection = csrf({cookie: {
     // FIX: Conditionally set 'secure' to true in production (HTTPS)

@@ -7,3 +7,7 @@ sonar-project.properties
 dist/
 build/
 .env.*
+
+# Local upload storage (STORAGE_DRIVER=local)
+uploads/
+**/uploads/
