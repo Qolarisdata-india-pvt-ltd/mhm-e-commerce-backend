@@ -83,6 +83,12 @@ const proxy = (target) => {
     changeOrigin: true,
     proxyTimeout: 10000,
     timeout: 10000,
+    // Express strips the mount path from req.url; restore the full original path
+    // so services that mount at /api/... still receive the correct route.
+    pathRewrite: (_path, req) => {
+      const full = req.originalUrl || req.url || "/";
+      return full.split("?")[0];
+    },
 
     onProxyReq: (proxyReq, req, res) => {
       const correlationId =
