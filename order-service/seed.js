@@ -44,7 +44,7 @@ const seedOrderService = async () => {
     });
 
     console.log(
-      "✅ Delivery Boy & Shipping Rates seeded! (raju@test.com / password123)",
+      `✅ Delivery Boy & Shipping Rates seeded! (raju@test.com / <from env>)`,
     );
 
     await safeDeleteCache([

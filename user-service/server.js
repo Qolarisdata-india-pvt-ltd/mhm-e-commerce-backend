@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser"; // Added
 import csrf from "csurf"; // Added
 
 import sequelize from "./config/db.js";
-import defineAssociations from "./models/associations.js";
+import defineAssociations from "./models/Associations.js";
 import authRoutes from "./routes/auth.routes.js";
 import addressRoutes from "./routes/address.routes.js";
 dotenv.config();

@@ -1,5 +1,5 @@
+import "dotenv/config";
 import express from "express";
-import dotenv from "dotenv";
 import sequelize from "./config/db.js";
 import orderRoutes from "./routes/order.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
@@ -7,8 +7,6 @@ import deliveryRoutes from "./routes/delivery.routes.js";
 import defineAssociations from "./models/associations.js";
 import shippingRoutes from "./routes/shipping.routes.js";
 import "./services/sagaQueue.js";
-
-dotenv.config();
 
 const app = express();
 app.disable("x-powered-by");
@@ -37,8 +35,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-
-
-app.listen(process.env.PORT, () =>
-  console.log(`Order Service running on ${process.env.PORT}`),
+app.listen(process.env.PORT || 5004, () =>
+  console.log(`Order Service running on ${process.env.PORT || 5004}`),
 );

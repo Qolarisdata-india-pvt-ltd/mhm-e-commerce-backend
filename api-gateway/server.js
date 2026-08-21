@@ -1,6 +1,6 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -8,34 +8,67 @@ import { RedisStore } from "rate-limit-redis";
 import redis from "./config/redis.js";
 import crypto from "node:crypto";
 
-dotenv.config();
+const requireEnv = (name) => {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required env var: ${name}`);
+  }
+  return value;
+};
 
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL;
-const CART_SERVICE_URL = process.env.CART_SERVICE_URL;
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL;
-const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL;
-const ADMIN_SERVICE_URL = process.env.ADMIN_SERVICE_URL;
-const VENDOR_SERVICE_URL = process.env.VENDOR_SERVICE_URL;
-const VENDOR_SERVICE_ADMIN_URL = process.env.VENDOR_SERVICE_ADMIN_URL;
-const ADDRESS_SERVICE_URL = process.env.ADDRESS_SERVICE_URL;
+const USER_SERVICE_URL = requireEnv("USER_SERVICE_URL");
+const CART_SERVICE_URL = requireEnv("CART_SERVICE_URL");
+const ORDER_SERVICE_URL = requireEnv("ORDER_SERVICE_URL");
+const PRODUCT_SERVICE_URL = requireEnv("PRODUCT_SERVICE_URL");
+const ADMIN_SERVICE_URL = requireEnv("ADMIN_SERVICE_URL");
+const VENDOR_SERVICE_URL = requireEnv("VENDOR_SERVICE_URL");
+const VENDOR_SERVICE_ADMIN_URL = requireEnv("VENDOR_SERVICE_ADMIN_URL");
+const ADDRESS_SERVICE_URL = requireEnv("ADDRESS_SERVICE_URL");
+
+const isDev = process.env.NODE_ENV !== "production";
+const frontendOrigins = (
+  process.env.FRONTEND_URLS ||
+  process.env.FRONTEND_URL ||
+  (isDev ? "http://localhost:5174" : "")
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+if (frontendOrigins.length === 0) {
+  throw new Error(
+    "Missing FRONTEND_URL or FRONTEND_URLS. Set your staging frontend origin(s).",
+  );
+}
+
+const trustedRateLimitIps = (
+  process.env.RATE_LIMIT_TRUSTED_IPS || (isDev ? "127.0.0.1,::1" : "")
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 const app = express();
-
 
 app.use(helmet());
 
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:5174",
+  origin(origin, callback) {
+    // Allow non-browser clients (no Origin) and configured frontends
+    if (!origin || frontendOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
 };
 
 app.use(cors(corsOptions));
 app.options(/(.*)/, cors(corsOptions));
 
-
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+  max: Number(process.env.RATE_LIMIT_MAX || 200),
   message: {
     message:
       "Too many requests from this IP, please try again after 15 minutes",
@@ -48,17 +81,11 @@ const globalLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  skip: (req) => {
-    return (
-      req.ip === "127.0.0.1" || req.ip === "::1" || req.ip === "YOUR_MOBILE_IP"
-    );
-  },
+  windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+  max: Number(process.env.AUTH_RATE_LIMIT_MAX || 20),
+  skip: (req) => trustedRateLimitIps.includes(req.ip),
   skipSuccessfulRequests: true,
-  requestWasSuccessful: (req, res) => {
-    return res.statusCode < 400;
-  },
+  requestWasSuccessful: (req, res) => res.statusCode < 400,
   message: {
     message: "Too many login attempts from this IP, please try again later.",
   },
@@ -70,37 +97,29 @@ const authLimiter = rateLimit({
 
 app.use(globalLimiter);
 
-
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/vendor/login", authLimiter);
 app.use("/api/admin/login", authLimiter);
 
-
 const proxy = (target) => {
   return createProxyMiddleware({
     target,
     changeOrigin: true,
-    proxyTimeout: 10000,
-    timeout: 10000,
-    // Express strips the mount path from req.url; restore the full original path
-    // so services that mount at /api/... still receive the correct route.
+    proxyTimeout: Number(process.env.PROXY_TIMEOUT_MS || 10000),
+    timeout: Number(process.env.PROXY_TIMEOUT_MS || 10000),
     pathRewrite: (_path, req) => {
       const full = req.originalUrl || req.url || "/";
       return full.split("?")[0];
     },
-
-    onProxyReq: (proxyReq, req, res) => {
+    onProxyReq: (proxyReq, req) => {
       const correlationId =
         req.headers["x-correlation-id"] || crypto.randomUUID();
       proxyReq.setHeader("x-correlation-id", correlationId);
     },
-
     onError: (err, req, res) => {
       console.error(`[Gateway Error] connecting to ${target}:`, err.message);
-
       if (res.headersSent) return;
-
       if (
         err.code === "ECONNRESET" ||
         err.code === "ETIMEDOUT" ||
@@ -111,7 +130,6 @@ const proxy = (target) => {
             "Gateway Timeout: The underlying microservice took too long to respond.",
         });
       }
-
       res.status(502).json({
         message: "Bad Gateway: Underlying service is down or unreachable.",
       });
@@ -121,7 +139,6 @@ const proxy = (target) => {
 
 app.use("/api/admin/users", proxy(USER_SERVICE_URL));
 app.use("/api/admin/vendors", proxy(VENDOR_SERVICE_ADMIN_URL));
-
 app.use("/api/admin", proxy(ADMIN_SERVICE_URL));
 app.use("/api/payment", proxy(ORDER_SERVICE_URL));
 app.use("/api/orders", proxy(ORDER_SERVICE_URL));
@@ -146,5 +163,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5007;
 app.listen(PORT, () => {
-  console.log(`🚀 API Gateway running efficiently on port ${PORT}`);
+  console.log(`🚀 API Gateway running on port ${PORT}`);
+  console.log(`CORS origins: ${frontendOrigins.join(", ")}`);
 });

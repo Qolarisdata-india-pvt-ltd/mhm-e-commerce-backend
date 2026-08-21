@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import sequelize from "./config/db.js";
 import User from "./models/User.js";
 import Address from "./models/Address.js";
-import defineAssociations from "./models/associations.js";
+import defineAssociations from "./models/Associations.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -13,14 +13,24 @@ const seedUser = async () => {
     defineAssociations();
     await sequelize.sync();
 
-    const hashedPassword = await bcrypt.hash("Password@123", 10);
+    const seedPassword = process.env.SEED_PASSWORD;
+    if (!seedPassword) {
+      throw new Error(
+        "Missing SEED_PASSWORD in environment. Refusing to seed with a hardcoded password.",
+      );
+    }
+
+    const email = process.env.SEED_USER_EMAIL || "customer@test.com";
+    const phone = process.env.SEED_USER_PHONE || "9112233449";
+    const name = process.env.SEED_USER_NAME || "Test Customer";
+    const hashedPassword = await bcrypt.hash(seedPassword, 10);
 
     const [user] = await User.findOrCreate({
-      where: { email: "customer@test.com" },
+      where: { email },
       defaults: {
-        name: "Test Customer",
-        email: "customer@test.com",
-        phone: "9112233449",
+        name,
+        email,
+        phone,
         password: hashedPassword,
         role: "user",
       },
@@ -30,20 +40,18 @@ const seedUser = async () => {
       where: { userId: user.id, isDefault: true },
       defaults: {
         userId: user.id,
-        fullName: "Test Customer",
-        phone: "9112233449",
-        addressLine1: "123 Test Street",
-        area: "Vijay Nagar",
-        city: "Indore",
-        state: "Madhya Pradesh",
-        pincode: "452010",
+        fullName: name,
+        phone,
+        addressLine1: process.env.SEED_ADDRESS_LINE1 || "123 Test Street",
+        area: process.env.SEED_ADDRESS_AREA || "Vijay Nagar",
+        city: process.env.SEED_ADDRESS_CITY || "Indore",
+        state: process.env.SEED_ADDRESS_STATE || "Madhya Pradesh",
+        pincode: process.env.SEED_ADDRESS_PINCODE || "452010",
         isDefault: true,
       },
     });
 
-    console.log(
-      "✅ User & Address seeded successfully! (customer@test.com / password123)",
-    );
+    console.log(`✅ User & Address seeded successfully! (${email} / <from env>)`);
     process.exit(0);
   } catch (error) {
     console.error("❌ User Seeding Error:", error);

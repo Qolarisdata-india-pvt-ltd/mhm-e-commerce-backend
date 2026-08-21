@@ -1,12 +1,8 @@
+import "dotenv/config";
 import express from "express";
-import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import sequelize, { connectDB } from "./config/db.js";
 import adminRoutes from "./routes/admin.routes.js";
-
-
-
-dotenv.config();
 
 const app = express();
 app.disable("x-powered-by");
@@ -26,11 +22,10 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await connectDB();
-
     console.log("Models synced successfully");
-
-    app.listen(5005, () => {
-      console.log("Admin Service running on port 5005");
+    const port = process.env.PORT || 5005;
+    app.listen(port, () => {
+      console.log(`Admin Service running on port ${port}`);
     });
   } catch (error) {
     console.error("Server error:", error);

@@ -20,8 +20,22 @@ const Product = sequelize.define("Product", {
     type: DataTypes.TEXT
   },
 images: {
-    type: DataTypes.JSON, 
-    defaultValue: [] 
+    type: DataTypes.JSON,
+    defaultValue: [],
+    get() {
+      const raw = this.getDataValue("images");
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return raw.startsWith("http") ? [raw] : [];
+        }
+      }
+      return [];
+    },
   },
   totalStock: {
     type: DataTypes.INTEGER,

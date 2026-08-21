@@ -3,7 +3,8 @@ coverage/
 .sonar/
 .scannerwork/
 .env
+.env.*
+!.env.example
 sonar-project.properties
 dist/
 build/
-.env.*
