@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import sequelize from "./config/db.js";
 import User from "./models/User.js";
 import Address from "./models/Address.js";
-import defineAssociations from "./models/Associations.js";
+import defineAssociations from "./models/associations.js";
 import dotenv from "dotenv";
 
 dotenv.config();
