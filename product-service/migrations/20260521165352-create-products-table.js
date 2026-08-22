@@ -1,5 +1,5 @@
 export async function up(queryInterface, Sequelize) {
-  await queryInterface.createTable("Products", {
+  await queryInterface.createTable("products", {
     id: {
       type: Sequelize.INTEGER,
       autoIncrement: true,
@@ -56,7 +56,7 @@ export async function up(queryInterface, Sequelize) {
       type: Sequelize.INTEGER,
 
       references: {
-        model: "Categories",
+        model: "categories",
         key: "id",
       },
 
@@ -77,5 +77,5 @@ export async function up(queryInterface, Sequelize) {
 }
 
 export async function down(queryInterface) {
-  await queryInterface.dropTable("Products");
+  await queryInterface.dropTable("products");
 }

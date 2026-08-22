@@ -1,5 +1,5 @@
 export async function up(queryInterface, Sequelize) {
-  await queryInterface.createTable("Admins", {
+  await queryInterface.createTable("admins", {
     id: {
       type: Sequelize.INTEGER,
       autoIncrement: true,
@@ -47,5 +47,5 @@ export async function up(queryInterface, Sequelize) {
 }
 
 export async function down(queryInterface) {
-  await queryInterface.dropTable("Admins");
+  await queryInterface.dropTable("admins");
 }

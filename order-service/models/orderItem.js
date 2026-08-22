@@ -53,7 +53,7 @@ const orderItem = sequelize.define(
       allowNull: true,
     },
   },
-  { tableName: "OrderItems" },
+  { tableName: "orderitems" },
 );
 
 export default orderItem;

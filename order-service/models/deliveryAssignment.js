@@ -42,7 +42,7 @@ const deliveryAssignment = sequelize.define(
       allowNull: true,
     },
   },
-  { tableName: "DeliveryAssignments" },
+  { tableName: "deliveryassignments" },
 );
 
 export default deliveryAssignment;

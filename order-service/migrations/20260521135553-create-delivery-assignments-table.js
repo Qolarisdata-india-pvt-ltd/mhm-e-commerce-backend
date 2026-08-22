@@ -1,5 +1,5 @@
 export async function up(queryInterface, Sequelize) {
-  await queryInterface.createTable("DeliveryAssignments", {
+  await queryInterface.createTable("deliveryassignments", {
     id: {
       type: Sequelize.INTEGER,
       autoIncrement: true,
@@ -21,7 +21,7 @@ export async function up(queryInterface, Sequelize) {
       type: Sequelize.INTEGER,
       allowNull: false,
       references: {
-        model: "DeliveryBoys",
+        model: "deliveryboys",
         key: "id",
       },
       onDelete: "CASCADE",
@@ -67,5 +67,5 @@ export async function up(queryInterface, Sequelize) {
 }
 
 export async function down(queryInterface) {
-  await queryInterface.dropTable("DeliveryAssignments");
+  await queryInterface.dropTable("deliveryassignments");
 }

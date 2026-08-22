@@ -53,7 +53,7 @@ const deliveryBoy = sequelize.define(
       allowNull: false,
     },
   },
-  { tableName: "DeliveryBoys" },
+  { tableName: "deliveryboys" },
 );
 
 deliveryBoy.beforeCreate(async (boy) => {

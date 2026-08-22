@@ -80,7 +80,7 @@ const vendor = sequelize.define(
       defaultValue: "PENDING",
     },
   },
-  { tableName: "Vendors" },
+  { tableName: "vendors" },
 );
 
 export default vendor;

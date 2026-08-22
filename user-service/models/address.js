@@ -15,7 +15,7 @@ const address = sequelize.define(
       defaultValue: false,
     },
   },
-  { tableName: "Addresses" },
+  { tableName: "addresses" },
 );
 
 export default address;

@@ -35,7 +35,7 @@ const admin = sequelize.define(
       defaultValue: "admin",
     },
   },
-  { tableName: "Admins" },
+  { tableName: "admins" },
 );
 
 export default admin;

@@ -61,7 +61,7 @@ const product = sequelize.define(
     },
   },
   {
-    tableName: "Products",
+    tableName: "products",
     hooks: {
       beforeCreate: (item) => {
         item.availableStock = item.totalStock - (item.reservedStock || 0);

@@ -14,7 +14,7 @@ const category = sequelize.define(
       allowNull: false,
     },
   },
-  { tableName: "Categories" },
+  { tableName: "categories" },
 );
 
 export default category;
