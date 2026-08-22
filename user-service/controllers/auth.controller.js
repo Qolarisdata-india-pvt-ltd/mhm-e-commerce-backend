@@ -1,10 +1,10 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import User from "../models/User.js";
+import userModel from "../models/user.js";
 import minioClient, { initBucket } from "../config/minioClient.js";
 import redis from "../config/redis.js";
-import Address from "../models/Address.js";
+import addressModel from "../models/address.js";
 import { sendTokenCookie, clearTokenCookie } from "../utils/cookie.util.js";
 import dotenv from "dotenv";
 
@@ -76,8 +76,8 @@ export const register = async (req, res) => {
     const { name, email, phone, password } = parseResult.data;
 
     const [existingPhone, existingEmail] = await Promise.all([
-      User.findOne({ where: { phone } }),
-      User.findOne({ where: { email } }),
+      userModel.findOne({ where: { phone } }),
+      userModel.findOne({ where: { email } }),
     ]);
 
     if (existingPhone)
@@ -92,7 +92,7 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
+    const user = await userModel.create({
       name,
       email,
       phone,
@@ -152,7 +152,7 @@ export const login = async (req, res) => {
       }
     }
 
-    const user = await User.findOne({ where: { phone } });
+    const user = await userModel.findOne({ where: { phone } });
 
     const handleFailedLogin = async () => {
       if (redis.status === "ready") {
@@ -225,7 +225,7 @@ export const logout = async (req, res) => {
 
 export const me = async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id, {
+    const user = await userModel.findByPk(req.user.id, {
       attributes: { exclude: ["password"] },
     });
 
@@ -259,7 +259,7 @@ export const changePassword = async (req, res) => {
     }
 
     const { oldPassword, newPassword } = parseResult.data;
-    const user = await User.findByPk(req.user.id);
+    const user = await userModel.findByPk(req.user.id);
 
     const hashToCompare = user ? user.password : dummyHash;
     const isMatch = await bcrypt.compare(oldPassword, hashToCompare);
@@ -280,7 +280,7 @@ export const changePassword = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.findAll({
+    const users = await userModel.findAll({
       attributes: { exclude: ["password"] },
       order: [["createdAt", "DESC"]],
     });
@@ -304,14 +304,14 @@ export const updateProfile = async (req, res) => {
     const { name, email } = parseResult.data;
     const userId = req.user.id;
 
-    const user = await User.findByPk(userId);
+    const user = await userModel.findByPk(userId);
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
     if (name) user.name = name;
 
     if (email && email !== user.email) {
-      const exists = await User.findOne({ where: { email } });
+      const exists = await userModel.findOne({ where: { email } });
       if (exists)
         return res.status(400).json({ message: "Email already in use" });
       user.email = email;
@@ -357,12 +357,12 @@ export const getUserByPhoneAdmin = async (req, res) => {
     if (!phone)
       return res.status(400).json({ message: "Phone number is required" });
 
-    const user = await User.findOne({
+    const user = await userModel.findOne({
       where: { phone },
       attributes: { exclude: ["password"] },
       include: [
         {
-          model: Address,
+          model: addressModel,
           as: "addresses",
         },
       ],

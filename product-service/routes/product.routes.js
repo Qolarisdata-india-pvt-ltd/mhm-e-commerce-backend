@@ -2,7 +2,7 @@ import express from "express";
 import auth from "../middleware/auth.middleware.js";
 import vendor from "../middleware/vendor.middleware.js";
 import admin from "../middleware/admin.middleware.js";
-import vendorOrAdmin from "../middleware/vendorOrAdmin.middleware.js";
+import vendorOrAdmin from "../middleware/vendor-or-admin.middleware.js";
 import upload from "../middleware/upload.js";
 
 import { getProducts, getSingleProduct, getAllCategories, getProductsBatch } from "../controllers/catalog.controller.js";

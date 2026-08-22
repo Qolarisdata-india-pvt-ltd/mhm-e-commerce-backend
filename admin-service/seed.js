@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import sequelize from "./config/db.js";
-import Admin from "./models/Admin.js";
+import adminModel from "./models/admin.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -23,7 +23,7 @@ const seedAdmin = async () => {
 
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-    await Admin.findOrCreate({
+    await adminModel.findOrCreate({
       where: { email: adminEmail },
       defaults: {
         name: adminName,

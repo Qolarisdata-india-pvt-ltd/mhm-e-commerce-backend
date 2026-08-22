@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import Admin from "../models/Admin.js";
+import adminModel from "../models/admin.js";
 import redis from "../config/redis.js";
 import { sendTokenCookie, clearTokenCookie } from "../utils/cookie.util.js";
 const loginSchema = z.object({
@@ -45,7 +45,7 @@ export const adminLogin = async (req, res) => {
       }
     }
 
-    const admin = await Admin.findOne({ where: { phone } });
+    const admin = await adminModel.findOne({ where: { phone } });
 
     const handleFailedLogin = async () => {
       if (redis.status === "ready") {

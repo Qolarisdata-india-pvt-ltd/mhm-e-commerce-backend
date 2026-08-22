@@ -1,16 +1,16 @@
-import Order from "../models/Order.js";
-import OrderItem from "../models/OrderItem.js";
+import orderModel from "../models/order.js";
+import orderItemModel from "../models/orderItem.js";
 import { Op } from "sequelize";
-import DeliveryBoy from "../models/DeliveryBoy.js";
-import DeliveryAssignment from "../models/DeliveryAssignment.js";
-import ShippingRate from "../models/ShippingRate.js";
+import deliveryBoyModel from "../models/deliveryBoy.js";
+import deliveryAssignmentModel from "../models/deliveryAssignment.js";
+import shippingRateModel from "../models/shippingRate.js";
 import sequelize from "../config/db.js";
 import { fetchWithCache, safeDeleteCache } from "../utils/redisWrapper.js";
 
 export const getAllDeliveryBoys = async (req, res) => {
   try {
     const boys = await fetchWithCache("delivery_boys:all", 3600, async () => {
-      return await DeliveryBoy.findAll();
+      return await deliveryBoyModel.findAll();
     });
     res.json(boys);
   } catch (err) {
@@ -24,7 +24,7 @@ export const createDeliveryBoy = async (req, res) => {
     const { name, email, phone, password, maxOrders, assignedAreas } = req.body;
 
     if (assignedAreas && assignedAreas.length > 0) {
-      const validAreas = await ShippingRate.findAll({
+      const validAreas = await shippingRateModel.findAll({
         where: { areaName: { [Op.in]: assignedAreas } },
       });
 
@@ -36,7 +36,7 @@ export const createDeliveryBoy = async (req, res) => {
       }
     }
 
-    const newBoy = await DeliveryBoy.create({
+    const newBoy = await deliveryBoyModel.create({
       name,
       email,
       phone,
@@ -62,8 +62,8 @@ export const deleteDeliveryBoy = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const boy = await DeliveryBoy.findByPk(id);
-    const activeAssignments = await DeliveryAssignment.findOne({
+    const boy = await deliveryBoyModel.findByPk(id);
+    const activeAssignments = await deliveryAssignmentModel.findOne({
       where: {
         deliveryBoyId: id,
         status: {
@@ -83,7 +83,7 @@ export const deleteDeliveryBoy = async (req, res) => {
       Array.isArray(boy.assignedAreas) &&
       boy.assignedAreas.length > 0
     ) {
-      const otherBoys = await DeliveryBoy.findAll({
+      const otherBoys = await deliveryBoyModel.findAll({
         where: {
           id: { [Op.ne]: id },
           active: true,
@@ -103,7 +103,7 @@ export const deleteDeliveryBoy = async (req, res) => {
       );
 
       if (uniqueAreas.length > 0) {
-        const pendingOrphanOrder = await Order.findOne({
+        const pendingOrphanOrder = await orderModel.findOne({
           where: {
             assignedArea: { [Op.in]: uniqueAreas },
             status: { [Op.in]: ["PROCESSING", "PACKED"] },
@@ -112,7 +112,7 @@ export const deleteDeliveryBoy = async (req, res) => {
 
         if (pendingOrphanOrder) {
           return res.status(400).json({
-            message: `Cannot delete. He is the ONLY active partner covering '${pendingOrphanOrder.assignedArea}' which has pending orders.`,
+            message: `Cannot delete. He is the ONLY active partner covering '${pendingOrphanorder.assignedArea}' which has pending orders.`,
           });
         }
       }
@@ -121,7 +121,7 @@ export const deleteDeliveryBoy = async (req, res) => {
     if (!boy)
       return res.status(404).json({ message: "Delivery boy not found" });
 
-    await DeliveryBoy.destroy({ where: { id } });
+    await deliveryBoyModel.destroy({ where: { id } });
     await safeDeleteCache(["delivery_boys:all", "delivery_locations:all"]);
 
     res.json({ message: "Deleted" });
@@ -136,12 +136,12 @@ export const updateDeliveryBoy = async (req, res) => {
     const { id } = req.params;
     const { assignedAreas } = req.body;
 
-    const boy = await DeliveryBoy.findByPk(id);
+    const boy = await deliveryBoyModel.findByPk(id);
     if (!boy) return res.status(404).json({ message: "Boy not found" });
 
     if (assignedAreas) {
     
-      const validAreas = await ShippingRate.findAll({
+      const validAreas = await shippingRateModel.findAll({
         where: { areaName: { [Op.in]: assignedAreas } },
       });
 
@@ -152,7 +152,7 @@ export const updateDeliveryBoy = async (req, res) => {
       }
     }
 
-    await DeliveryBoy.update(req.body, { where: { id } });
+    await deliveryBoyModel.update(req.body, { where: { id } });
     await safeDeleteCache(["delivery_boys:all", "delivery_locations:all"]);
 
     res.json({ message: "Delivery Boy Updated" });
@@ -179,7 +179,7 @@ export const reassignDeliveryBoy = async (req, res) => {
       return res.status(400).json({ message: "Missing New Delivery Boy ID" });
     }
 
-    const order = await Order.findByPk(orderId, { transaction: t });
+    const order = await orderModel.findByPk(orderId, { transaction: t });
     if (!order) {
       await t.rollback();
       return res.status(404).json({ message: "Order not found" });
@@ -192,7 +192,7 @@ export const reassignDeliveryBoy = async (req, res) => {
         .json({ message: `Cannot reassign. Order is already ${order.status}` });
     }
 
-    const newBoy = await DeliveryBoy.findByPk(newDeliveryBoyId, {
+    const newBoy = await deliveryBoyModel.findByPk(newDeliveryBoyId, {
       transaction: t,
     });
     if (!newBoy) {
@@ -207,7 +207,7 @@ export const reassignDeliveryBoy = async (req, res) => {
         .json({ message: "Cannot assign to an inactive Delivery Boy" });
     }
 
-    const currentAssignment = await DeliveryAssignment.findOne({
+    const currentAssignment = await deliveryAssignmentModel.findOne({
       where: { orderId: orderId, status: { [Op.or]: ["ASSIGNED", "PICKED"] } },
       transaction: t,
     });
@@ -232,7 +232,7 @@ export const reassignDeliveryBoy = async (req, res) => {
     }
 
     if (!previousReason) {
-      const activeReturnItems = await OrderItem.count({
+      const activeReturnItems = await orderItemModel.count({
         where: {
           orderId: orderId,
           refundStatus: { [Op.or]: ["APPROVED", "PICKUP_SCHEDULED"] },
@@ -248,7 +248,7 @@ export const reassignDeliveryBoy = async (req, res) => {
       }
     }
 
-    await DeliveryAssignment.create(
+    await deliveryAssignmentModel.create(
       {
         orderId: orderId,
         deliveryBoyId: newDeliveryBoyId,
@@ -273,18 +273,18 @@ export const getReassignmentOptions = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findByPk(orderId);
+    const order = await orderModel.findByPk(orderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     const targetArea = order.assignedArea;
-    const allBoys = await DeliveryBoy.findAll({ where: { active: true } });
+    const allBoys = await deliveryBoyModel.findAll({ where: { active: true } });
 
     const options = [];
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
     for (const boy of allBoys) {
-      const currentLoad = await DeliveryAssignment.count({
+      const currentLoad = await deliveryAssignmentModel.count({
         where: {
           deliveryBoyId: boy.id,
           createdAt: { [Op.gte]: startOfDay },
@@ -332,7 +332,7 @@ export const getDeliveryBoyOrders = async (req, res) => {
       where: { deliveryBoyId: deliveryBoyId },
       include: [
         {
-          model: Order,
+          model: orderModel,
           required: true,
           attributes: [
             "id",
@@ -348,7 +348,7 @@ export const getDeliveryBoyOrders = async (req, res) => {
           ],
           include: [
             {
-              model: OrderItem,
+              model: orderItemModel,
               attributes: ["id", "productId", "quantity", "price"],
             },
           ],
@@ -357,7 +357,7 @@ export const getDeliveryBoyOrders = async (req, res) => {
       order: [["createdAt", "DESC"]],
     };
 
-    const activeAssignments = await DeliveryAssignment.findAll({
+    const activeAssignments = await deliveryAssignmentModel.findAll({
       ...fetchOptions,
       where: {
         ...fetchOptions.where,
@@ -365,7 +365,7 @@ export const getDeliveryBoyOrders = async (req, res) => {
       },
     });
 
-    const historyAssignments = await DeliveryAssignment.findAll({
+    const historyAssignments = await deliveryAssignmentModel.findAll({
       ...fetchOptions,
       where: {
         ...fetchOptions.where,
@@ -431,17 +431,17 @@ export const getDeliveryBoyOrders = async (req, res) => {
 export const getDeliveryBoyCashStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const deliveryBoy = await DeliveryBoy.findByPk(id, {
+    const deliveryBoy = await deliveryBoyModel.findByPk(id, {
       attributes: ["id", "name", "phone", "maxOrders"],
     });
     if (!deliveryBoy)
       return res.status(404).json({ message: "Delivery boy not found" });
 
-    const assignments = await DeliveryAssignment.findAll({
+    const assignments = await deliveryAssignmentModel.findAll({
       where: { deliveryBoyId: id, status: { [Op.ne]: "FAILED" } },
       include: [
         {
-          model: Order,
+          model: orderModel,
           where: { paymentMethod: "COD" },
           attributes: [
             "id",
@@ -511,7 +511,7 @@ export const settleCOD = async (req, res) => {
     if (!deliveryBoyId || !orderIds?.length)
       return res.status(400).json({ message: "Boy ID and Order IDs required" });
 
-    const result = await DeliveryAssignment.update(
+    const result = await deliveryAssignmentModel.update(
       { cashDeposited: true, depositedAt: new Date() },
       {
         where: {
@@ -537,7 +537,7 @@ export const settleCOD = async (req, res) => {
 
 export const getCODReconciliation = async (req, res) => {
   try {
-    const pendingAssignments = await DeliveryAssignment.findAll({
+    const pendingAssignments = await deliveryAssignmentModel.findAll({
       where: {
         status: "DELIVERED",
         cashDeposited: false,
@@ -545,7 +545,7 @@ export const getCODReconciliation = async (req, res) => {
       },
       include: [
         {
-          model: Order,
+          model: orderModel,
           where: {
             paymentMethod: "COD",
             payment: true,
@@ -553,7 +553,7 @@ export const getCODReconciliation = async (req, res) => {
           },
           attributes: ["id", "amount", "address", "updatedAt"],
         },
-        { model: DeliveryBoy, attributes: ["id", "name", "phone"] },
+        { model: deliveryBoyModel, attributes: ["id", "name", "phone"] },
       ],
     });
 
@@ -600,7 +600,7 @@ export const getDeliveryLocations = async (req, res) => {
       "delivery_locations:all",
       3600,
       async () => {
-        const boys = await DeliveryBoy.findAll({
+        const boys = await deliveryBoyModel.findAll({
           where: { active: true },
           attributes: ["state", "city", "assignedAreas"],
         });

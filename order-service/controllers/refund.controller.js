@@ -1,8 +1,8 @@
-import Order from "../models/Order.js";
-import OrderItem from "../models/OrderItem.js";
+import orderModel from "../models/order.js";
+import orderItemModel from "../models/orderItem.js";
 import { Op } from "sequelize";
-import DeliveryBoy from "../models/DeliveryBoy.js";
-import DeliveryAssignment from "../models/DeliveryAssignment.js";
+import deliveryBoyModel from "../models/deliveryBoy.js";
+import deliveryAssignmentModel from "../models/deliveryAssignment.js";
 import sequelize from "../config/db.js";
 import axios from "axios";
 import razorpay from "../config/razorpay.js";
@@ -53,7 +53,7 @@ const assignRefundMethod = (order, item, requestedMethod, bankDetails) => {
 };
 
 const updateParentOrderState = async (orderId, parentOrder, t) => {
-  const allItems = await OrderItem.findAll({
+  const allItems = await orderItemModel.findAll({
     where: { orderId },
     transaction: t,
   });
@@ -61,16 +61,16 @@ const updateParentOrderState = async (orderId, parentOrder, t) => {
     ["REQUESTED", "APPROVED"].includes(i.refundStatus),
   );
 
-  if (hasRequests && parentOrder.status === "DELIVERED") {
-    parentOrder.status = "RETURN_REQUESTED";
-    await parentOrder.save({ transaction: t });
+  if (hasRequests && parentorder.status === "DELIVERED") {
+    parentorder.status = "RETURN_REQUESTED";
+    await parentorder.save({ transaction: t });
   }
 };
 
 // --- updateRefundStatusAdmin Helpers ---
 
 const handleCreditedRefund = async (item, res, t) => {
-  const order = await Order.findByPk(item.orderId, { transaction: t });
+  const order = await orderModel.findByPk(item.orderId, { transaction: t });
 
   if (order?.userId) {
     const refundAmount =
@@ -124,7 +124,7 @@ const handleApprovedReturn = async (item, returnDropMethod, t) => {
   let assignedBoyName = null;
 
   if (item.status === "DELIVERED") {
-    const order = await Order.findByPk(item.orderId, {
+    const order = await orderModel.findByPk(item.orderId, {
       transaction: t,
       lock: true,
     });
@@ -189,8 +189,8 @@ export const cancelOrderItem = async (req, res) => {
     const { orderId, itemId } = req.params;
     const reason = req.body.reason || "Customer Cancelled";
 
-    const order = await Order.findByPk(orderId, {
-      include: OrderItem,
+    const order = await orderModel.findByPk(orderId, {
+      include: orderItemModel,
       transaction: t,
     });
 
@@ -253,8 +253,8 @@ export const cancelFullOrder = async (req, res) => {
     const { orderId } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findByPk(orderId, {
-      include: OrderItem,
+    const order = await orderModel.findByPk(orderId, {
+      include: orderItemModel,
       transaction: t,
     });
 
@@ -332,9 +332,9 @@ export const requestReturn = async (req, res) => {
     const { reason, refundMethod, bankDetails } = req.body;
     const userId = req.user.id;
 
-    const item = await OrderItem.findOne({
+    const item = await orderItemModel.findOne({
       where: { id: itemId, orderId },
-      include: [{ model: Order, where: { userId } }],
+      include: [{ model: orderModel, where: { userId } }],
       transaction: t,
     });
 
@@ -383,7 +383,7 @@ export const updateRefundStatusAdmin = async (req, res) => {
     const { orderId, itemId } = req.params;
     const { status, returnDropMethod } = req.body;
 
-    const item = await OrderItem.findOne({
+    const item = await orderItemModel.findOne({
       where: { id: itemId, orderId },
       transaction: t,
     });
@@ -425,14 +425,14 @@ export const updateRefundStatusAdmin = async (req, res) => {
 
 export const getCancelledRefundOrders = async (req, res) => {
   try {
-    const { count, rows } = await OrderItem.findAndCountAll({
+    const { count, rows } = await orderItemModel.findAndCountAll({
       where: {
         status: "CANCELLED",
         refundStatus: { [Op.in]: ["REQUESTED", "CANCELLED", "CREDITED"] },
       },
       include: [
         {
-          model: Order,
+          model: orderModel,
           required: true,
           where: { paymentMethod: { [Op.ne]: "COD" } },
           attributes: [
@@ -487,14 +487,14 @@ export const getCancelledRefundOrders = async (req, res) => {
 
 export const getAllReturnOrdersAdmin = async (req, res) => {
   try {
-    const { count, rows } = await OrderItem.findAndCountAll({
+    const { count, rows } = await orderItemModel.findAndCountAll({
       where: {
         refundStatus: { [Op.ne]: "NONE" },
         status: { [Op.ne]: "CANCELLED" },
       },
       include: [
         {
-          model: Order,
+          model: orderModel,
           attributes: [
             "id",
             "userId",
@@ -545,13 +545,13 @@ export const getAllReturnOrdersAdmin = async (req, res) => {
     let returnTasks = [];
 
     if (orderIds.size > 0) {
-      returnTasks = await DeliveryAssignment.findAll({
+      returnTasks = await deliveryAssignmentModel.findAll({
         where: {
           orderId: { [Op.in]: Array.from(orderIds) },
           reason: "RETURN_PICKUP",
           status: { [Op.ne]: "FAILED" },
         },
-        include: [{ model: DeliveryBoy, attributes: ["name", "phone"] }],
+        include: [{ model: deliveryBoyModel, attributes: ["name", "phone"] }],
         order: [["createdAt", "DESC"]],
       });
     }

@@ -1,9 +1,9 @@
-import Product from "../models/Product.js";
-import Category from "../models/Category.js";
+import productModel from "../models/product.js";
+import categoryModel from "../models/category.js";
 
 export const getVendorInventory = async (req, res) => {
   try {
-    const products = await Product.findAll({
+    const products = await productModel.findAll({
       where: { vendorId: req.user.id },
       attributes: [
         "id",
@@ -35,7 +35,7 @@ export const getVendorInventory = async (req, res) => {
 
 export const getAllWarehouseInventory = async (req, res) => {
   try {
-    const products = await Product.findAll({
+    const products = await productModel.findAll({
       attributes: [
         "id",
         "name",
@@ -47,7 +47,7 @@ export const getAllWarehouseInventory = async (req, res) => {
         "availableStock",
         "vendorId",
       ],
-      include: { model: Category, attributes: ["name"] },
+      include: { model: categoryModel, attributes: ["name"] },
       order: [["createdAt", "DESC"]],
     });
 
@@ -74,7 +74,7 @@ export const getAllWarehouseInventory = async (req, res) => {
 export const transferToWarehouse = async (req, res) => {
   try {
     const { productId, quantity } = req.body;
-    const product = await Product.findByPk(productId);
+    const product = await productModel.findByPk(productId);
 
     if (!product) return res.status(404).json({ message: "Product not found" });
 
@@ -104,7 +104,7 @@ export const updateWarehouseStock = async (req, res) => {
       });
     }
 
-    const product = await Product.findByPk(productId);
+    const product = await productModel.findByPk(productId);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
     const newWarehouse = Number.parseInt(warehouseStock, 10);

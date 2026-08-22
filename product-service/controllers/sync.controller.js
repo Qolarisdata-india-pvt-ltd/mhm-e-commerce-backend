@@ -1,5 +1,5 @@
 import { z } from "zod";
-import Product from "../models/Product.js";
+import productModel from "../models/product.js";
 import sequelize from "../config/db.js";
 
 const syncPayloadSchema = z.object({
@@ -20,7 +20,7 @@ export const reserveStock = async (req, res) => {
 
   try {
     for (const item of items) {
-      const product = await Product.findByPk(item.productId, {
+      const product = await productModel.findByPk(item.productId, {
         transaction: t,
         lock: t.LOCK.UPDATE 
       });
@@ -51,7 +51,7 @@ export const releaseStock = async (req, res) => {
   try {
     const { items } = req.body;
     for (const item of items) {
-      const product = await Product.findByPk(item.productId, {
+      const product = await productModel.findByPk(item.productId, {
         transaction: t,
         lock: t.LOCK.UPDATE
       });
@@ -79,7 +79,7 @@ export const releaseStockafterreturn = async (req, res) => {
   try {
     const { items } = req.body;
     for (const item of items) {
-      const product = await Product.findByPk(item.productId, {
+      const product = await productModel.findByPk(item.productId, {
         transaction: t,
       });
 
@@ -103,7 +103,7 @@ export const releaseStockafterreturn = async (req, res) => {
 // --- HELPER FUNCTIONS FOR shipStock ---
 
 const validateAndFetchProduct = async (item, t) => {
-  const product = await Product.findByPk(item.productId, { transaction: t });
+  const product = await productModel.findByPk(item.productId, { transaction: t });
   
   if (!product) throw new Error(`Product ID ${item.productId} not found`);
   
@@ -159,7 +159,7 @@ export const restockInventory = async (req, res) => {
     const { items } = req.body;
 
     for (const item of items) {
-      const product = await Product.findByPk(item.productId, {
+      const product = await productModel.findByPk(item.productId, {
         transaction: t,
       });
 

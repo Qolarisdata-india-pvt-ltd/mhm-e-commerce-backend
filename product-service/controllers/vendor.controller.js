@@ -1,13 +1,13 @@
-import Product from "../models/Product.js";
-import Category from "../models/Category.js";
+import productModel from "../models/product.js";
+import categoryModel from "../models/category.js";
 import { uploadImageToMinio } from "../utils/uploadToMinio.js";
 import { safeInvalidateCatalog } from "../utils/redisWrapper.js";
 
 export const getVendorProducts = async (req, res) => {
   try {
-    const products = await Product.findAll({
+    const products = await productModel.findAll({
       where: { vendorId: req.user.id },
-      include: { model: Category },
+      include: { model: categoryModel },
     });
 
     res.json(products);
@@ -74,7 +74,7 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    const product = await Product.create({
+    const product = await productModel.create({
       name,
       price,
       description,
@@ -97,7 +97,7 @@ export const createProduct = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByPk(req.params.id);
+    const product = await productModel.findByPk(req.params.id);
 
     if (!product) return res.status(404).json({ message: "Product not found" });
     if (req.user.role === "vendor" && product.vendorId !== req.user.id)
@@ -144,7 +144,7 @@ export const updateProduct = async (req, res) => {
 
 export const deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByPk(req.params.id);
+    const product = await productModel.findByPk(req.params.id);
 
     if (!product) return res.status(404).json({ message: "Product not found" });
     if (req.user.role === "vendor" && product.vendorId !== req.user.id)
@@ -152,7 +152,7 @@ export const deleteProduct = async (req, res) => {
 
     const productId = product.id;
 
-    await product.destroy();
+    await productModel.destroy();
     await safeInvalidateCatalog(productId);
 
     res.json({ message: "Product deleted" });
@@ -166,9 +166,9 @@ export const getProductsByVendorId = async (req, res) => {
   try {
     const { vendorId } = req.params;
 
-    const products = await Product.findAll({
+    const products = await productModel.findAll({
       where: { vendorId: vendorId },
-      include: { model: Category },
+      include: { model: categoryModel },
     });
 
     res.json(products);

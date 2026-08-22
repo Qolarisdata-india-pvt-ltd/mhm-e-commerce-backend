@@ -1,5 +1,5 @@
-import DeliveryBoy from "../models/DeliveryBoy.js";
-import DeliveryAssignment from "../models/DeliveryAssignment.js";
+import deliveryBoyModel from "../models/deliveryBoy.js";
+import deliveryAssignmentModel from "../models/deliveryAssignment.js";
 import { Op } from "sequelize";
 
 export const autoAssignDeliveryBoy = async (
@@ -9,19 +9,19 @@ export const autoAssignDeliveryBoy = async (
   reason = null,
 ) => {
   try {
-    const existingAssignment = await DeliveryAssignment.findOne({
+    const existingAssignment = await deliveryAssignmentModel.findOne({
       where: { orderId, status: { [Op.ne]: "FAILED" }, reason: reason },
       transaction,
     });
 
     if (existingAssignment) {
-      const boy = await DeliveryBoy.findByPk(existingAssignment.deliveryBoyId, {
+      const boy = await deliveryBoyModel.findByPk(existingAssignment.deliveryBoyId, {
         transaction,
       });
       return { success: true, boy, message: "Already Assigned" };
     }
 
-    const allBoys = await DeliveryBoy.findAll({
+    const allBoys = await deliveryBoyModel.findAll({
       where: { active: true },
       transaction,
     });
@@ -44,7 +44,7 @@ export const autoAssignDeliveryBoy = async (
     let minLoad = Infinity;
 
     for (const boy of validBoys) {
-      const load = await DeliveryAssignment.count({
+      const load = await deliveryAssignmentModel.count({
         where: {
           deliveryBoyId: boy.id,
           createdAt: { [Op.gte]: startOfDay },
@@ -63,7 +63,7 @@ export const autoAssignDeliveryBoy = async (
 
     if (!bestBoy) return { success: false, message: `All boys fully booked` };
 
-    await DeliveryAssignment.create(
+    await deliveryAssignmentModel.create(
       {
         orderId,
         deliveryBoyId: bestBoy.id,

@@ -1,5 +1,5 @@
-import Order from "../models/Order.js";
-import OrderItem from "../models/OrderItem.js";
+import orderModel from "../models/order.js";
+import orderItemModel from "../models/orderItem.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 
@@ -38,7 +38,7 @@ export const getAdminStats = async (req, res) => {
     }
 
    
-    const itemSalesData = await OrderItem.findAll({
+    const itemSalesData = await orderItemModel.findAll({
       where: getSalesFilter(null, dateFilter),
       attributes: [
         [
@@ -53,7 +53,7 @@ export const getAdminStats = async (req, res) => {
     );
 
     
-    const shippingData = await Order.findAll({
+    const shippingData = await orderModel.findAll({
       where: {
         status: { [Op.in]: ["DELIVERED", "RETURN_REQUESTED"] },
         ...dateFilter,
@@ -74,14 +74,14 @@ export const getAdminStats = async (req, res) => {
     const totalSales = totalItemSales + totalShipping;
 
    
-    const totalOrders = await Order.count({
+    const totalOrders = await orderModel.count({
       where: {
         status: { [Op.ne]: "CANCELLED" },
         ...dateFilter,
       },
     });
 
-    const pendingOrders = await Order.count({
+    const pendingOrders = await orderModel.count({
       where: {
         status: { [Op.in]: ["PENDING", "PROCESSING", "PACKED"] },
         ...dateFilter,
@@ -90,7 +90,7 @@ export const getAdminStats = async (req, res) => {
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-    const todayOrders = await Order.count({
+    const todayOrders = await orderModel.count({
       where: { createdAt: { [Op.gte]: startOfToday } },
     });
 
@@ -119,7 +119,7 @@ export const getVendorStats = async (req, res) => {
       dateFilter = { createdAt: { [Op.between]: [startDate, endDate] } };
     }
 
-    const salesData = await OrderItem.findAll({
+    const salesData = await orderItemModel.findAll({
       where: getSalesFilter(vendorId, dateFilter),
       attributes: [
         [sequelize.literal("COALESCE(SUM(price * quantity), 0)"), "totalSales"],
@@ -128,11 +128,11 @@ export const getVendorStats = async (req, res) => {
     });
     const totalSales = salesData[0]?.totalSales || 0;
 
-    const totalOrders = await OrderItem.count({
+    const totalOrders = await orderItemModel.count({
       where: { vendorId, ...dateFilter },
     });
 
-    const pendingOrders = await OrderItem.count({
+    const pendingOrders = await orderItemModel.count({
       where: {
         vendorId,
         status: { [Op.in]: ["PENDING", "PROCESSING"] },
@@ -142,14 +142,14 @@ export const getVendorStats = async (req, res) => {
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-    const todayOrders = await OrderItem.count({
+    const todayOrders = await orderItemModel.count({
       where: {
         vendorId,
         createdAt: { [Op.gte]: startOfToday },
       },
     });
 
-    const returnsCount = await OrderItem.count({
+    const returnsCount = await orderItemModel.count({
       where: {
         vendorId,
         refundStatus: {
@@ -202,7 +202,7 @@ export const vendorSalesReport = async (req, res) => {
 
     const filter = getSalesFilter(req.user.id, dateCondition);
 
-    const items = await OrderItem.findAll({
+    const items = await orderItemModel.findAll({
       where: filter,
       order: [["createdAt", "DESC"]], 
     });
@@ -261,7 +261,7 @@ export const adminVendorSalesReport = async (req, res) => {
         createdAt: { [Op.gte]: new Date(new Date().getFullYear(), 0, 1) },
       };
 
-    const salesData = await OrderItem.findAll({
+    const salesData = await orderItemModel.findAll({
       where: getSalesFilter(vendorId, dateCondition),
       attributes: [[sequelize.literal("SUM(price * quantity)"), "totalSales"]],
       raw: true,
@@ -283,7 +283,7 @@ export const adminVendorSalesReport = async (req, res) => {
 
 export const adminTotalSales = async (req, res) => {
   try {
-    const salesData = await OrderItem.findAll({
+    const salesData = await orderItemModel.findAll({
       where: getSalesFilter(null),
       attributes: [[sequelize.literal("SUM(price * quantity)"), "totalSales"]],
       raw: true,
@@ -301,7 +301,7 @@ export const adminTotalSales = async (req, res) => {
 export const adminAllVendorsSalesReport = async (req, res) => {
   try {
     
-    const sales = await OrderItem.findAll({
+    const sales = await orderItemModel.findAll({
       where: getSalesFilter(null), 
       attributes: [
         "vendorId",

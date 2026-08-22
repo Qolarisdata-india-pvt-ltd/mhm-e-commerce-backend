@@ -1,5 +1,5 @@
 import razorpay from "../config/razorpay.js";
-import Order from "../models/Order.js";
+import orderModel from "../models/order.js";
 import { Op } from "sequelize";
 import redis from "../config/redis.js";
 import sequelize from "../config/db.js";
@@ -14,7 +14,7 @@ export const createPaymentOrder = async (req, res) => {
     if (!orderId)
       return res.status(400).json({ message: "Order ID is required" });
 
-    const order = await Order.findByPk(orderId);
+    const order = await orderModel.findByPk(orderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
     if (order.payment === true)
       return res.status(409).json({ message: "Order is already paid" });
@@ -50,7 +50,7 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Incomplete payment details" });
     }
 
-    const order = await Order.findByPk(orderId);
+    const order = await orderModel.findByPk(orderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
     if (order.payment === true)
       return res
@@ -105,7 +105,7 @@ export const createDeliveryQR = async (req, res) => {
   try {
     const { orderId } = req.body;
 
-    const order = await Order.findByPk(orderId);
+    const order = await orderModel.findByPk(orderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
     if (order.payment === true)
       return res.status(400).json({ message: "Order is already paid" });
@@ -134,7 +134,7 @@ export const createDeliveryQR = async (req, res) => {
 export const checkPaymentStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const order = await Order.findByPk(orderId, {
+    const order = await orderModel.findByPk(orderId, {
       attributes: ["id", "payment", "codPaymentMode", "utrNumber"],
     });
 
@@ -175,7 +175,7 @@ export const razorpayWebhook = async (req, res) => {
       const orderId = paymentEntity.notes?.orderId;
 
       if (orderId) {
-        const order = await Order.findByPk(orderId);
+        const order = await orderModel.findByPk(orderId);
 
         if (order?.payment === false) {
           order.payment = true;

@@ -1,4 +1,4 @@
-import Address from "../models/Address.js";
+import addressModel from "../models/address.js";
 import { z } from "zod";
 
 
@@ -19,14 +19,14 @@ export const addAddress = async (req, res) => {
 
     const { addressLine1, state, city, area, isDefault } = parseResult.data;
 
-    const addressCount = await Address.count({ where: { userId: req.user.id } });
+    const addressCount = await addressModel.count({ where: { userId: req.user.id } });
     const shouldBeDefault = addressCount === 0 ? true : isDefault;
 
     if (shouldBeDefault) {
-      await Address.update({ isDefault: false }, { where: { userId: req.user.id } });
+      await addressModel.update({ isDefault: false }, { where: { userId: req.user.id } });
     }
 
-    const newAddress = await Address.create({
+    const newAddress = await addressModel.create({
       userId: req.user.id, addressLine1, state, city, area, isDefault: shouldBeDefault,
     });
 
@@ -42,7 +42,7 @@ export const getAddresses = async (req, res) => {
     const userId = req.user.id;
   
 
-    const addresses = await Address.findAll({
+    const addresses = await addressModel.findAll({
       where: { userId },
       order: [
         ["isDefault", "DESC"],
@@ -63,7 +63,7 @@ export const deleteAddress = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deleted = await Address.destroy({
+    const deleted = await addressModel.destroy({
       where: { id, userId: req.user.id },
     });
 
@@ -93,14 +93,14 @@ export const adminAddAddress = async (req, res) => {
 
     const { userId, addressLine1, state, city, area, isDefault } = parseResult.data;
 
-    const addressCount = await Address.count({ where: { userId } });
+    const addressCount = await addressModel.count({ where: { userId } });
     const shouldBeDefault = addressCount === 0 ? true : isDefault;
 
     if (shouldBeDefault) {
-      await Address.update({ isDefault: false }, { where: { userId } });
+      await addressModel.update({ isDefault: false }, { where: { userId } });
     }
 
-    const newAddress = await Address.create({
+    const newAddress = await addressModel.create({
       userId, addressLine1, state, city, area, isDefault: shouldBeDefault,
     });
 

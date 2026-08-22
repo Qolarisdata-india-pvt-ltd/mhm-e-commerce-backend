@@ -1,6 +1,6 @@
 import axios from "axios";
 import { z } from "zod";
-import Admin from "../models/Admin.js";
+import adminModel from "../models/admin.js";
 import bcrypt from "bcrypt";
 
 import { fetchWithCache } from "../utils/redisWrapper.js";
@@ -36,7 +36,7 @@ export const changePassword = async (req, res) => {
 
     const { oldPassword, newPassword } = parseResult.data;
     const adminId = req.user.id;
-    const admin = await Admin.findByPk(adminId);
+    const admin = await adminModel.findByPk(adminId);
 
     if (!admin) {
       return res.status(404).json({ message: "Admin not found" });
@@ -99,8 +99,8 @@ export const getDashboardData = async (req, res) => {
       const recentOrders = orders.map((order) => ({
         orderId: order.id,
         customer: order.address?.name || "User",
-        date: order.createdAt
-          ? new Date(order.createdAt).toLocaleDateString()
+        date: orderModel.createdAt
+          ? new Date(orderModel.createdAt).toLocaleDateString()
           : "N/A",
         status: order.status,
         total: order.amount,

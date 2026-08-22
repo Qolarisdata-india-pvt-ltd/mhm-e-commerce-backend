@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import Vendor from "../models/Vendor.js";
+import vendorModel from "../models/vendor.js";
 import redis from "../config/redis.js";
 
 import { validateVerhoeff } from "../utils/verhoeff.js";
@@ -102,8 +102,8 @@ export const register = async (req, res) => {
     }
 
     const [existingPhone, existingEmail] = await Promise.all([
-      Vendor.findOne({ where: { phone: data.phone } }),
-      Vendor.findOne({ where: { email: data.email } }),
+      vendorModel.findOne({ where: { phone: data.phone } }),
+      vendorModel.findOne({ where: { email: data.email } }),
     ]);
 
     if (existingPhone)
@@ -118,7 +118,7 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    await Vendor.create({
+    await vendorModel.create({
       ...data,
       password: hashedPassword,
       status: "PENDING",
@@ -169,7 +169,7 @@ export const login = async (req, res) => {
       }
     }
 
-    const vendor = await Vendor.findOne({ where: { phone } });
+    const vendor = await vendorModel.findOne({ where: { phone } });
 
     const handleFailedLogin = async () => {
       if (redis.status === "ready") {
@@ -215,7 +215,7 @@ export const getProfile = async (req, res) => {
     const cacheKey = `vendor:profile:${vendorId}`;
 
     const vendor = await fetchWithCache(cacheKey, 3600, async () => {
-      return await Vendor.findByPk(vendorId, {
+      return await vendorModel.findByPk(vendorId, {
         attributes: { exclude: ["password"] },
       });
     });
@@ -269,7 +269,7 @@ export const changePassword = async (req, res) => {
     }
 
     const vendorId = req.user.id;
-    const vendor = await Vendor.findByPk(vendorId);
+    const vendor = await vendorModel.findByPk(vendorId);
 
     if (!vendor) {
       return res.status(404).json({ error: "Vendor not found" });

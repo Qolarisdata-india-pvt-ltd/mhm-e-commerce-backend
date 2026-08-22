@@ -1,16 +1,16 @@
-import User from "./User.js";
-import Address from "./Address.js";
+import user from "./user.js";
+import address from "./address.js";
 
 const defineAssociations = () => {
-    User.hasMany(Address, { 
-        foreignKey: "userId", 
-        as: "addresses", 
-        onDelete: "CASCADE" 
-    });
+  user.hasMany(address, {
+    foreignKey: "userId",
+    as: "addresses",
+    onDelete: "CASCADE",
+  });
 
-    Address.belongsTo(User, { 
-        foreignKey: "userId" 
-    });
+  address.belongsTo(user, {
+    foreignKey: "userId",
+  });
 };
 
 export default defineAssociations;

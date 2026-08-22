@@ -1,6 +1,6 @@
 import sequelize from "./config/db.js";
-import DeliveryBoy from "./models/DeliveryBoy.js";
-import ShippingRate from "./models/ShippingRate.js";
+import deliveryBoyModel from "./models/deliveryBoy.js";
+import shippingRateModel from "./models/shippingRate.js";
 import dotenv from "dotenv";
 import { safeDeleteCache } from "./utils/redisWrapper.js";
 
@@ -19,16 +19,16 @@ const seedOrderService = async () => {
       { areaName: "General", rate: 100 },
     ];
 
-    await ShippingRate.bulkCreate(areas, { ignoreDuplicates: true });
+    await shippingRateModel.bulkCreate(areas, { ignoreDuplicates: true });
 
     // 2. Seed Delivery Boy
     const seedPassword = process.env.SEED_PASSWORD;
     if (!seedPassword) {
       throw new Error(
-        "Missing SEED_PASSWORD in environment variables. Cannot seed DeliveryBoy.",
+        "Missing SEED_PASSWORD in environment variables. Cannot seed deliveryBoy.",
       );
     }
-    await DeliveryBoy.findOrCreate({
+    await deliveryBoyModel.findOrCreate({
       where: { email: "raju@test.com" },
       defaults: {
         name: "Raju Courier",

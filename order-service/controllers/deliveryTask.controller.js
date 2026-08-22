@@ -1,21 +1,21 @@
 import { Op } from "sequelize";
-import DeliveryAssignment from "../models/DeliveryAssignment.js";
-import Order from "../models/Order.js";
-import OrderItem from "../models/OrderItem.js";
+import deliveryAssignmentModel from "../models/deliveryAssignment.js";
+import orderModel from "../models/order.js";
+import orderItemModel from "../models/orderItem.js";
 import axios from "axios";
 
 export const getMyTasks = async (req, res) => {
   try {
     const boyId = req.user.id;
 
-    const allTasks = await DeliveryAssignment.findAll({
+    const allTasks = await deliveryAssignmentModel.findAll({
       where: {
         deliveryBoyId: boyId,
         status: { [Op.ne]: "FAILED" },
       },
       include: [
         {
-          model: Order,
+          model: orderModel,
           attributes: [
             "id",
             "amount",
@@ -29,7 +29,7 @@ export const getMyTasks = async (req, res) => {
           ],
           include: [
             {
-              model: OrderItem,
+              model: orderItemModel,
               attributes: [
                 "id",
                 "productId",
@@ -162,7 +162,7 @@ export const getMyTasks = async (req, res) => {
 // ------------------------------------------------------------------
 
 const processReturnPickup = async (orderId, status) => {
-  const orderItems = await OrderItem.findAll({ where: { orderId } });
+  const orderItems = await orderItemModel.findAll({ where: { orderId } });
 
   if (status === "PICKED") {
     for (const item of orderItems) {
@@ -228,7 +228,7 @@ const processNormalDelivery = async (
   codPaymentMode,
   utrNumber,
 ) => {
-  const order = await Order.findByPk(orderId, { include: OrderItem });
+  const order = await orderModel.findByPk(orderId, { include: orderItemModel });
   if (!order) return null;
 
   if (status === "PICKED") {
@@ -256,7 +256,7 @@ export const updateTaskStatus = async (req, res) => {
     const { status, codPaymentMode, utrNumber } = req.body;
     const boyId = req.user.id;
 
-    const assignment = await DeliveryAssignment.findOne({
+    const assignment = await deliveryAssignmentModel.findOne({
       where: { id: assignmentId, deliveryBoyId: boyId },
     });
 

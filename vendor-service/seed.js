@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import sequelize from "./config/db.js";
-import Vendor from "./models/Vendor.js";
+import vendorModel from "./models/vendor.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -22,7 +22,7 @@ const seedVendor = async () => {
     const name = process.env.SEED_VENDOR_NAME || "Test Vendor";
     const hashedPassword = await bcrypt.hash(seedPassword, 10);
 
-    await Vendor.findOrCreate({
+    await vendorModel.findOrCreate({
       where: { email },
       defaults: {
         name,

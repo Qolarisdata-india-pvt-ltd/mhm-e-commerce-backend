@@ -1,17 +1,17 @@
-import DeliveryBoy from "./DeliveryBoy.js";
-import DeliveryAssignment from "./DeliveryAssignment.js";
-import Order from "./Order.js";
-import OrderItem from "./OrderItem.js";
+import deliveryBoy from "./deliveryBoy.js";
+import deliveryAssignment from "./deliveryAssignment.js";
+import order from "./order.js";
+import orderItem from "./orderItem.js";
+
 const defineAssociations = () => {
-    
-    DeliveryBoy.hasMany(DeliveryAssignment, { foreignKey: "deliveryBoyId" });
-    DeliveryAssignment.belongsTo(DeliveryBoy, { foreignKey: "deliveryBoyId" });
+  deliveryBoy.hasMany(deliveryAssignment, { foreignKey: "deliveryBoyId" });
+  deliveryAssignment.belongsTo(deliveryBoy, { foreignKey: "deliveryBoyId" });
 
-    Order.hasOne(DeliveryAssignment, { foreignKey: "orderId" });
-    DeliveryAssignment.belongsTo(Order, { foreignKey: "orderId" });
+  order.hasOne(deliveryAssignment, { foreignKey: "orderId" });
+  deliveryAssignment.belongsTo(order, { foreignKey: "orderId" });
 
-    Order.hasMany(OrderItem, { foreignKey: "orderId" });
-    OrderItem.belongsTo(Order, { foreignKey: "orderId" });
+  order.hasMany(orderItem, { foreignKey: "orderId" });
+  orderItem.belongsTo(order, { foreignKey: "orderId" });
 };
 
 export default defineAssociations;

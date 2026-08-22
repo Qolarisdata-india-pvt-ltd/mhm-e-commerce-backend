@@ -1,9 +1,9 @@
-import Order from "../models/Order.js";
-import OrderItem from "../models/OrderItem.js";
+import orderModel from "../models/order.js";
+import orderItemModel from "../models/orderItem.js";
 import { Op } from "sequelize";
-import DeliveryBoy from "../models/DeliveryBoy.js";
-import DeliveryAssignment from "../models/DeliveryAssignment.js";
-import ShippingRate from "../models/ShippingRate.js";
+import deliveryBoyModel from "../models/deliveryBoy.js";
+import deliveryAssignmentModel from "../models/deliveryAssignment.js";
+import shippingRateModel from "../models/shippingRate.js";
 import sequelize from "../config/db.js";
 import axios from "axios";
 import redis from "../config/redis.js";
@@ -35,7 +35,7 @@ const VALID_TRANSITIONS = {
 
 const autoAssignDeliveryBoy = async (orderId, area, transaction) => {
   try {
-    const existingAssignment = await DeliveryAssignment.findOne({
+    const existingAssignment = await deliveryAssignmentModel.findOne({
       where: {
         orderId,
         status: { [Op.ne]: "FAILED" },
@@ -44,7 +44,7 @@ const autoAssignDeliveryBoy = async (orderId, area, transaction) => {
     });
 
     if (existingAssignment) {
-      const boy = await DeliveryBoy.findByPk(existingAssignment.deliveryBoyId, {
+      const boy = await deliveryBoyModel.findByPk(existingAssignment.deliveryBoyId, {
         transaction,
       });
       return {
@@ -54,7 +54,7 @@ const autoAssignDeliveryBoy = async (orderId, area, transaction) => {
       };
     }
 
-    const allBoys = await DeliveryBoy.findAll({
+    const allBoys = await deliveryBoyModel.findAll({
       where: { active: true },
       transaction,
     });
@@ -77,7 +77,7 @@ const autoAssignDeliveryBoy = async (orderId, area, transaction) => {
     let minLoad = Infinity;
 
     for (const boy of validBoys) {
-      const load = await DeliveryAssignment.count({
+      const load = await deliveryAssignmentModel.count({
         where: {
           deliveryBoyId: boy.id,
           createdAt: { [Op.gte]: startOfDay },
@@ -102,7 +102,7 @@ const autoAssignDeliveryBoy = async (orderId, area, transaction) => {
       };
     }
 
-    await DeliveryAssignment.create(
+    await deliveryAssignmentModel.create(
       { orderId, deliveryBoyId: bestBoy.id, status: "ASSIGNED" },
       { transaction },
     );
@@ -152,7 +152,7 @@ const handlePackedStatus = async (order, t) => {
   let msg = "Order packed & Stock Deducted";
 
   if (order.assignedArea) {
-    const existingAssignment = await DeliveryAssignment.findOne({
+    const existingAssignment = await deliveryAssignmentModel.findOne({
       where: { orderId: order.id, status: { [Op.ne]: "FAILED" } },
       transaction: t,
     });
@@ -207,7 +207,7 @@ const processDelivered = async (order, activeAssignment, t) => {
 // --- MAIN FUNCTION ---
 
 const handleDeliveryStatus = async (order, status, t) => {
-  const activeAssignment = await DeliveryAssignment.findOne({
+  const activeAssignment = await deliveryAssignmentModel.findOne({
     where: { orderId: order.id, status: { [Op.ne]: "FAILED" } },
     transaction: t,
   });
@@ -239,7 +239,7 @@ const syncItemShipment = async (item) => {
 };
 
 const updateParentOrderIfNeeded = async (orderId, status, t) => {
-  const allItems = await OrderItem.findAll({
+  const allItems = await orderItemModel.findAll({
     where: { orderId },
     transaction: t,
   });
@@ -248,7 +248,7 @@ const updateParentOrderIfNeeded = async (orderId, status, t) => {
 
   if (!allMatch || activeItems.length === 0) return { msg: "" };
 
-  const order = await Order.findByPk(orderId, { transaction: t });
+  const order = await orderModel.findByPk(orderId, { transaction: t });
 
   if (status === "PACKED") {
     console.log("All items PACKED.");
@@ -257,7 +257,7 @@ const updateParentOrderIfNeeded = async (orderId, status, t) => {
 
   if (order.status !== status) {
     if (["OUT_FOR_DELIVERY", "DELIVERED"].includes(status)) {
-      const hasBoy = await DeliveryAssignment.findOne({
+      const hasBoy = await deliveryAssignmentModel.findOne({
         where: { orderId: order.id, status: { [Op.ne]: "FAILED" } },
         transaction: t,
       });
@@ -272,7 +272,7 @@ const updateParentOrderIfNeeded = async (orderId, status, t) => {
     order.status = status;
     if (status === "DELIVERED") {
       order.payment = true;
-      const assignment = await DeliveryAssignment.findOne({
+      const assignment = await deliveryAssignmentModel.findOne({
         where: { orderId: order.id, status: { [Op.ne]: "FAILED" } },
         order: [["createdAt", "DESC"]],
         transaction: t,
@@ -318,7 +318,7 @@ export const checkout = async (req, res) => {
     let razorpayOrderData = null;
 
     await sequelize.transaction(async (t) => {
-      const rateRecord = await ShippingRate.findOne({
+      const rateRecord = await shippingRateModel.findOne({
         where: { areaName: selectedArea },
         transaction: t,
       });
@@ -332,7 +332,7 @@ export const checkout = async (req, res) => {
       shippingCharge = Number.parseFloat(rateRecord.rate);
       finalPayableAmount = Number.parseFloat(amount) + shippingCharge;
 
-      order = await Order.create(
+      order = await orderModel.create(
         {
           userId: req.user.id,
           amount: finalPayableAmount,
@@ -348,7 +348,7 @@ export const checkout = async (req, res) => {
       );
 
       for (const item of items) {
-        await OrderItem.create(
+        await orderItemModel.create(
           {
             orderId: order.id,
             productId: item.productId,
@@ -441,8 +441,8 @@ export const updateOrderStatusAdmin = async (req, res) => {
     let responseMsg = `Status updated to ${status}`;
 
     await sequelize.transaction(async (t) => {
-      const order = await Order.findByPk(req.params.id, {
-        include: OrderItem,
+      const order = await orderModel.findByPk(req.params.id, {
+        include: orderItemModel,
         transaction: t,
         lock: t.LOCK.UPDATE,
       });
@@ -482,7 +482,7 @@ export const updateOrderItemStatusAdmin = async (req, res) => {
     let responseMsg = `Item updated to ${status}`;
 
     await sequelize.transaction(async (t) => {
-      const item = await OrderItem.findOne({
+      const item = await orderItemModel.findOne({
         where: { id: itemId, orderId: orderId },
         transaction: t,
       });
@@ -518,9 +518,9 @@ export const getUserOrders = async (req, res) => {
     const limit = Number.parseInt(req.query.limit, 10) || 10;
     const offset = (page - 1) * limit;
 
-    const { count, rows } = await Order.findAndCountAll({
+    const { count, rows } = await orderModel.findAndCountAll({
       where: { userId: req.user.id },
-      include: OrderItem,
+      include: orderItemModel,
       limit: limit,
       offset: offset,
       order: [["createdAt", "DESC"]],
@@ -540,9 +540,9 @@ export const getUserOrders = async (req, res) => {
 
 export const getOrderById = async (req, res) => {
   try {
-    const order = await Order.findOne({
+    const order = await orderModel.findOne({
       where: { id: req.params.id, userId: req.user.id },
-      include: OrderItem,
+      include: orderItemModel,
     });
     res.json(order);
   } catch (err) {
@@ -553,9 +553,9 @@ export const getOrderById = async (req, res) => {
 
 export const trackOrder = async (req, res) => {
   try {
-    const order = await Order.findOne({
+    const order = await orderModel.findOne({
       where: { id: req.params.id },
-      include: OrderItem,
+      include: orderItemModel,
     });
     res.json(order);
   } catch (err) {
@@ -566,8 +566,8 @@ export const trackOrder = async (req, res) => {
 
 export const getAllOrdersAdmin = async (req, res) => {
   try {
-    const orders = await Order.findAll({
-      include: OrderItem,
+    const orders = await orderModel.findAll({
+      include: orderItemModel,
       order: [["createdAt", "DESC"]],
     });
     res.json(orders);
@@ -581,16 +581,16 @@ export const getOrderByIdAdmin = async (req, res) => {
   try {
     const orderId = req.params.id;
 
-    const order = await Order.findByPk(orderId, {
+    const order = await orderModel.findByPk(orderId, {
       include: [
         OrderItem,
         {
-          model: DeliveryAssignment,
+          model: deliveryAssignmentModel,
           where: {
             status: { [Op.notIn]: ["FAILED", "REASSIGNED", "CANCELLED"] },
           },
           required: false,
-          include: [DeliveryBoy],
+          include: [deliveryBoy],
         },
       ],
     });
@@ -603,9 +603,9 @@ export const getOrderByIdAdmin = async (req, res) => {
 
 export const getVendorOrders = async (req, res) => {
   try {
-    const items = await OrderItem.findAll({
+    const items = await orderItemModel.findAll({
       where: { vendorId: req.user.id },
-      include: Order,
+      include: orderModel,
       order: [["createdAt", "DESC"]],
     });
 
@@ -661,7 +661,7 @@ export const adminCreateOrder = async (req, res) => {
     await sequelize.transaction(async (t) => {
       let shippingCharge = 0;
 
-      const rateRecord = await ShippingRate.findOne({
+      const rateRecord = await shippingRateModel.findOne({
         where: { areaName: selectedArea },
         transaction: t,
       });
@@ -671,7 +671,7 @@ export const adminCreateOrder = async (req, res) => {
       const itemsTotal = Number.parseFloat(amount);
       const finalPayableAmount = itemsTotal + shippingCharge;
 
-      order = await Order.create(
+      order = await orderModel.create(
         {
           userId: userId,
           amount: finalPayableAmount,
@@ -687,7 +687,7 @@ export const adminCreateOrder = async (req, res) => {
       );
 
       for (const item of items) {
-        await OrderItem.create(
+        await orderItemModel.create(
           {
             orderId: order.id,
             productId: item.productId,

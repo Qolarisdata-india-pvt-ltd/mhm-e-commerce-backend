@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import sequelize from "./config/db.js";
-import User from "./models/User.js";
-import Address from "./models/Address.js";
+import userModel from "./models/user.js";
+import addressModel from "./models/address.js";
 import defineAssociations from "./models/associations.js";
 import dotenv from "dotenv";
 
@@ -25,7 +25,7 @@ const seedUser = async () => {
     const name = process.env.SEED_USER_NAME || "Test Customer";
     const hashedPassword = await bcrypt.hash(seedPassword, 10);
 
-    const [user] = await User.findOrCreate({
+    const [user] = await userModel.findOrCreate({
       where: { email },
       defaults: {
         name,
@@ -36,7 +36,7 @@ const seedUser = async () => {
       },
     });
 
-    await Address.findOrCreate({
+    await addressModel.findOrCreate({
       where: { userId: user.id, isDefault: true },
       defaults: {
         userId: user.id,

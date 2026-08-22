@@ -1,6 +1,6 @@
-import ShippingRate from "../models/ShippingRate.js";
+import shippingRateModel from "../models/shippingRate.js";
 import { fetchWithCache, safeDeleteCache } from "../utils/redisWrapper.js";
-import DeliveryBoy from "../models/DeliveryBoy.js";
+import deliveryBoyModel from "../models/deliveryBoy.js";
 
 export const setShippingRate = async (req, res) => {
   try {
@@ -24,7 +24,7 @@ export const setShippingRate = async (req, res) => {
     const defaults = { rate: cleanRate };
     if (isActive !== undefined) defaults.isActive = isActive;
 
-    const [rateRecord, created] = await ShippingRate.findOrCreate({
+    const [rateRecord, created] = await shippingRateModel.findOrCreate({
       where: { areaName: cleanArea },
       defaults: defaults,
     });
@@ -53,7 +53,7 @@ export const getAllShippingRates = async (req, res) => {
       "shipping_rates:all",
       86400,
       async () => {
-        return await ShippingRate.findAll({ order: [["areaName", "ASC"]] });
+        return await shippingRateModel.findAll({ order: [["areaName", "ASC"]] });
       },
     );
     res.json(rates);
@@ -69,7 +69,7 @@ export const getActiveShippingRates = async (req, res) => {
       "shipping_rates:active",
       86400,
       async () => {
-        return await ShippingRate.findAll({
+        return await shippingRateModel.findAll({
           where: { isActive: true },
           order: [["areaName", "ASC"]],
         });
@@ -86,7 +86,7 @@ export const toggleShippingAreaStatus = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const record = await ShippingRate.findByPk(id);
+    const record = await shippingRateModel.findByPk(id);
     if (!record) {
       return res.status(404).json({ message: "Rate not found" });
     }
@@ -110,12 +110,12 @@ export const deleteShippingRate = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const record = await ShippingRate.findByPk(id);
+    const record = await shippingRateModel.findByPk(id);
     if (!record) {
       return res.status(404).json({ message: "Rate not found" });
     }
 
-    const allBoys = await DeliveryBoy.findAll({
+    const allBoys = await deliveryBoyModel.findAll({
       attributes: ["id", "name", "assignedAreas"],
     });
 
@@ -148,7 +148,7 @@ export const getShippingCharge = async (req, res) => {
 
     const cleanArea = area.trim();
 
-    const rateRecord = await ShippingRate.findOne({
+    const rateRecord = await shippingRateModel.findOne({
       where: { areaName: cleanArea, isActive: true },
     });
 

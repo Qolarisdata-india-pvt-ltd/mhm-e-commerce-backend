@@ -1,4 +1,4 @@
-import Vendor from "../models/Vendor.js";
+import vendorModel from "../models/vendor.js";
 import { fetchWithCache, safeDeleteCache } from "../utils/redisWrapper.js";
 
 export const getAllVendors = async (req, res) => {
@@ -6,7 +6,7 @@ export const getAllVendors = async (req, res) => {
     const cacheKey = "vendors:all";
 
     const vendors = await fetchWithCache(cacheKey, 900, async () => {
-      return await Vendor.findAll({
+      return await vendorModel.findAll({
         attributes: { exclude: ["password"] }
       });
     });
@@ -20,7 +20,7 @@ export const getAllVendors = async (req, res) => {
 
 export const approveVendor = async (req, res) => {
   try {
-    const vendor = await Vendor.findByPk(req.params.id);
+    const vendor = await vendorModel.findByPk(req.params.id);
     
     if (!vendor) {
       return res.status(404).json({
@@ -48,7 +48,7 @@ export const approveVendor = async (req, res) => {
 
 export const rejectVendor = async (req, res) => {
   try {
-    const vendor = await Vendor.findByPk(req.params.id);
+    const vendor = await vendorModel.findByPk(req.params.id);
 
     if (!vendor) {
       return res.status(404).json({

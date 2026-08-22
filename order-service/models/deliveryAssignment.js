@@ -1,0 +1,48 @@
+import { DataTypes } from "sequelize";
+import sequelize from "../config/db.js";
+
+const deliveryAssignment = sequelize.define(
+  "DeliveryAssignment",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    orderId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    deliveryBoyId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.ENUM(
+        "ASSIGNED",
+        "PICKED",
+        "OUT_FOR_DELIVERY",
+        "DELIVERED",
+        "FAILED",
+        "REASSIGNED",
+      ),
+      defaultValue: "ASSIGNED",
+    },
+    reason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    cashDeposited: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: "True if delivery boy has handed over COD cash to Admin",
+    },
+    depositedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  { tableName: "DeliveryAssignments" },
+);
+
+export default deliveryAssignment;

@@ -1,5 +1,5 @@
-import Product from "../models/Product.js";
-import Category from "../models/Category.js";
+import productModel from "../models/product.js";
+import categoryModel from "../models/category.js";
 import { Op } from "sequelize";
 import { fetchWithCache } from "../utils/redisWrapper.js";
 import { z } from "zod";
@@ -27,7 +27,7 @@ export const getProductsBatch = async (req, res) => {
     const cacheKey = `products:batch:${ids}`;
 
     const products = await fetchWithCache(cacheKey, 60, async () => {
-      return await Product.findAll({
+      return await productModel.findAll({
         where: { id: { [Op.in]: idArray } },
         attributes: [
           "id",
@@ -37,7 +37,7 @@ export const getProductsBatch = async (req, res) => {
           "availableStock",
           "vendorId",
         ],
-        include: { model: Category, attributes: ["name"] },
+        include: { model: categoryModel, attributes: ["name"] },
       });
     });
 
@@ -84,11 +84,11 @@ export const getProducts = async (req, res) => {
 
       const offset = (page - 1) * limit;
 
-      return await Product.findAndCountAll({
+      return await productModel.findAndCountAll({
         where: whereCondition,
         include: [
           {
-            model: Category,
+            model: categoryModel,
             attributes: ["name"],
             where:
               category && category !== "all" ? { name: category } : undefined,
@@ -117,8 +117,8 @@ export const getSingleProduct = async (req, res) => {
     const cacheKey = `product:${id}`;
 
     const product = await fetchWithCache(cacheKey, 3600, async () => {
-      return await Product.findByPk(id, {
-        include: { model: Category },
+      return await productModel.findByPk(id, {
+        include: { model: categoryModel },
       });
     });
 
@@ -137,7 +137,7 @@ export const getAllCategories = async (req, res) => {
     const cacheKey = "categories:all";
 
     const categories = await fetchWithCache(cacheKey, 86400, async () => {
-      return await Category.findAll();
+      return await categoryModel.findAll();
     });
 
     res.json(categories);

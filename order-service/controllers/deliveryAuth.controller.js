@@ -1,4 +1,4 @@
-import DeliveryBoy from "../models/DeliveryBoy.js";
+import deliveryBoyModel from "../models/deliveryBoy.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import redis from "../config/redis.js";
@@ -30,7 +30,7 @@ export const loginDeliveryBoy = async (req, res) => {
       return res.status(400).json({ message: "Invalid Credentials" });
     };
 
-    const boy = await DeliveryBoy.findOne({ where: { phone } });
+    const boy = await deliveryBoyModel.findOne({ where: { phone } });
     if (!boy) return await handleFailedLogin();
 
     const isMatch = await bcrypt.compare(password, boy.password);
@@ -81,7 +81,7 @@ export const getProfile = async (req, res) => {
   try {
     const boyId = req.user.id;
     
-    const boy = await DeliveryBoy.findByPk(boyId, {
+    const boy = await deliveryBoyModel.findByPk(boyId, {
       attributes: { exclude: ["password"] },
     });
 
@@ -108,7 +108,7 @@ export const changePassword = async (req, res) => {
     }
 
     const boyId = req.user.id;
-    const boy = await DeliveryBoy.findByPk(boyId);
+    const boy = await deliveryBoyModel.findByPk(boyId);
 
     if (!boy) {
       return res.status(404).json({ message: "Delivery boy not found" });

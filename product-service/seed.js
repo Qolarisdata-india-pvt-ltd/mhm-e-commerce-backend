@@ -1,6 +1,6 @@
 import sequelize from "./config/db.js";
-import Category from "./models/Category.js";
-import Product from "./models/Product.js";
+import categoryModel from "./models/category.js";
+import productModel from "./models/product.js";
 import dotenv from "dotenv";
 import axios from "axios";
 
@@ -23,12 +23,12 @@ const extractJwtCookie = (setCookieHeader) => {
 
 // HELPER 1: Handle category creation to keep main function clean
 const seedCategories = async () => {
-  const [electronics] = await Category.findOrCreate({
+  const [electronics] = await categoryModel.findOrCreate({
     where: { name: "Electronics" },
     defaults: { name: "Electronics" },
   });
 
-  const [clothing] = await Category.findOrCreate({
+  const [clothing] = await categoryModel.findOrCreate({
     where: { name: "Clothing" },
     defaults: { name: "Clothing" },
   });
@@ -46,7 +46,7 @@ const seedCategories = async () => {
   ];
 
   for (const name of remainingCategories) {
-    await Category.findOrCreate({
+    await categoryModel.findOrCreate({
       where: { name },
       defaults: { name },
     });
@@ -147,9 +147,9 @@ const seedProducts = async () => {
     const realVendorId = await fetchLiveVendorId(seedPassword);
 
     // 4. Seed Products
-    await Product.destroy({ where: {} });
+    await productModel.destroy({ where: {} });
 
-    await Product.bulkCreate(
+    await productModel.bulkCreate(
       [
         {
           name: "Wireless Headphones",
