@@ -50,6 +50,19 @@ const trustedRateLimitIps = (
 
 const app = express();
 
+// Required when gateway runs behind nginx/load balancer (sets X-Forwarded-For).
+// Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+const trustProxy = process.env.TRUST_PROXY;
+if (trustProxy === "true" || trustProxy === "1") {
+  app.set("trust proxy", 1);
+} else if (trustProxy && trustProxy !== "false" && trustProxy !== "0") {
+  // e.g. TRUST_PROXY=2 for two proxy hops
+  app.set("trust proxy", Number(trustProxy) || 1);
+} else if (!isDev) {
+  // Default on for staging/production behind a reverse proxy
+  app.set("trust proxy", 1);
+}
+
 app.use(helmet());
 
 const corsOptions = {
