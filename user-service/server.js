@@ -22,7 +22,8 @@ const csrfProtection = csrf({cookie: {
   }});
 
 const mobileCsrfBypass = (req, res, next) => {
-  if (req.headers["x-app-client"] === "mobile") {
+  const bearer = req.headers.authorization?.startsWith("Bearer ");
+  if (req.headers["x-app-client"] === "mobile" || bearer) {
     return next();
   }
   return csrfProtection(req, res, next);

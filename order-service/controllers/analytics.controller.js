@@ -37,41 +37,17 @@ export const getAdminStats = async (req, res) => {
       dateFilter = { createdAt: { [Op.between]: [startDate, endDate] } };
     }
 
-   
-    const itemSalesData = await orderItemModel.findAll({
-      where: getSalesFilter(null, dateFilter),
-      attributes: [
-        [
-          sequelize.literal("COALESCE(SUM(price * quantity), 0)"),
-          "totalItemSales",
-        ],
-      ],
-      raw: true,
-    });
-    const totalItemSales = Number.parseFloat(
-      itemSalesData[0]?.totalItemSales || 0,
-    );
-
-    
-    const shippingData = await orderModel.findAll({
+    const salesData = await orderModel.findAll({
       where: {
-        status: { [Op.in]: ["DELIVERED", "RETURN_REQUESTED"] },
+        status: { [Op.ne]: "CANCELLED" },
         ...dateFilter,
       },
       attributes: [
-        [
-          sequelize.literal("COALESCE(SUM(shippingCharge), 0)"),
-          "totalShipping",
-        ],
+        [sequelize.literal("COALESCE(SUM(amount), 0)"), "totalSales"],
       ],
       raw: true,
     });
-    const totalShipping = Number.parseFloat(
-      shippingData[0]?.totalShipping || 0,
-    );
-
-   
-    const totalSales = totalItemSales + totalShipping;
+    const totalSales = Number.parseFloat(salesData[0]?.totalSales || 0);
 
    
     const totalOrders = await orderModel.count({

@@ -10,7 +10,9 @@ import { fetchWithCache, safeDeleteCache } from "../utils/redisWrapper.js";
 export const getAllDeliveryBoys = async (req, res) => {
   try {
     const boys = await fetchWithCache("delivery_boys:all", 3600, async () => {
-      return await deliveryBoyModel.findAll();
+      return await deliveryBoyModel.findAll({
+        attributes: { exclude: ["password"] },
+      });
     });
     res.json(boys);
   } catch (err) {

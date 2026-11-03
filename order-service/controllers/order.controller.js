@@ -319,7 +319,7 @@ export const checkout = async (req, res) => {
 
     await sequelize.transaction(async (t) => {
       const rateRecord = await shippingRateModel.findOne({
-        where: { areaName: selectedArea },
+        where: { areaName: selectedArea, isActive: true },
         transaction: t,
       });
 
@@ -541,7 +541,7 @@ export const getUserOrders = async (req, res) => {
 export const getOrderById = async (req, res) => {
   try {
     const order = await orderModel.findOne({
-      where: { id: req.params.id, userId: req.user.id },
+      where: { id: req.params.id, userId: String(req.user.id) },
       include: orderItemModel,
     });
     res.json(order);
@@ -564,37 +564,89 @@ export const trackOrder = async (req, res) => {
   }
 };
 
+const readAddress = (address) => {
+  if (!address) return {};
+  if (typeof address === "object") return address;
+  try {
+    const parsed = JSON.parse(address);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const loadCustomers = async (authHeader) => {
+  if (!USER_SERVICE_URL || !authHeader) return [];
+  try {
+    const response = await axios.get(`${USER_SERVICE_URL}/api/auth/users`, {
+      headers: { Authorization: authHeader },
+    });
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (err) {
+    console.error("Customer lookup failed:", err.message);
+    return [];
+  }
+};
+
+const presentAdminOrder = (order, customers) => {
+  const json = order?.toJSON ? order.toJSON() : order;
+  const address = readAddress(json.address);
+  const customer = customers.find(
+    (user) => Number(user.id) === Number(json.userId),
+  );
+  json.customerName =
+    address.fullName || address.recipientName || address.name || customer?.name || "";
+  json.customerPhone =
+    address.phone || address.recipientPhone || customer?.phone || "";
+  return json;
+};
+
 export const getAllOrdersAdmin = async (req, res) => {
   try {
     const orders = await orderModel.findAll({
       include: orderItemModel,
       order: [["createdAt", "DESC"]],
     });
-    res.json(orders);
+    const customers = await loadCustomers(req.headers.authorization);
+    res.json(orders.map((order) => presentAdminOrder(order, customers)));
   } catch (err) {
     console.error("Get All Orders Admin Error:", err.message);
     res.status(500).json({ message: "Failed" });
   }
 };
 
-export const getOrderByIdAdmin = async (req, res) => {
+const loadAdminOrder = async (orderId) => {
   try {
-    const orderId = req.params.id;
-
-    const order = await orderModel.findByPk(orderId, {
+    return await orderModel.findByPk(orderId, {
       include: [
-        OrderItem,
+        orderItemModel,
         {
           model: deliveryAssignmentModel,
           where: {
             status: { [Op.notIn]: ["FAILED", "REASSIGNED", "CANCELLED"] },
           },
           required: false,
-          include: [deliveryBoy],
+          include: [deliveryBoyModel],
         },
       ],
     });
-    res.json(order);
+  } catch (err) {
+    console.error("Order assignment lookup failed:", err.message);
+    return orderModel.findByPk(orderId, { include: orderItemModel });
+  }
+};
+
+export const getOrderByIdAdmin = async (req, res) => {
+  try {
+    const orderId = Number(req.params.id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ message: "Invalid order id" });
+    }
+
+    const order = await loadAdminOrder(orderId);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    const customers = await loadCustomers(req.headers.authorization);
+    res.json(presentAdminOrder(order, customers));
   } catch (err) {
     console.error("Get Order By Id Admin Error:", err.message);
     res.status(500).json({ message: "Failed" });
@@ -662,7 +714,7 @@ export const adminCreateOrder = async (req, res) => {
       let shippingCharge = 0;
 
       const rateRecord = await shippingRateModel.findOne({
-        where: { areaName: selectedArea },
+        where: { areaName: selectedArea, isActive: true },
         transaction: t,
       });
 

@@ -63,7 +63,12 @@ if (trustProxy === "true" || trustProxy === "1") {
   app.set("trust proxy", 1);
 }
 
-app.use(helmet());
+app.use(
+  helmet({
+    // Product photos are loaded by the store on another local port.
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 
 const corsOptions = {
   origin(origin, callback) {
@@ -121,10 +126,7 @@ const proxy = (target) => {
     changeOrigin: true,
     proxyTimeout: Number(process.env.PROXY_TIMEOUT_MS || 10000),
     timeout: Number(process.env.PROXY_TIMEOUT_MS || 10000),
-    pathRewrite: (_path, req) => {
-      const full = req.originalUrl || req.url || "/";
-      return full.split("?")[0];
-    },
+    pathRewrite: (_path, req) => req.originalUrl || req.url || "/",
     onProxyReq: (proxyReq, req) => {
       const correlationId =
         req.headers["x-correlation-id"] || crypto.randomUUID();

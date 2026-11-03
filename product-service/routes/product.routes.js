@@ -6,6 +6,7 @@ import vendorOrAdmin from "../middleware/vendor-or-admin.middleware.js";
 import upload from "../middleware/upload.js";
 
 import { getProducts, getSingleProduct, getAllCategories, getProductsBatch } from "../controllers/catalog.controller.js";
+import { streamProductImage } from "../controllers/media.controller.js";
 
 import { createProduct, updateProduct, deleteProduct, getVendorProducts, getProductsByVendorId } from "../controllers/vendor.controller.js";
 
@@ -38,6 +39,7 @@ router.put("/admin/inventory/update", auth, admin, updateWarehouseStock);
 router.post("/admin/inventory/restock", auth, admin, restockInventory);
 
 router.get("/batch",internalAuth, getProductsBatch);
+router.get("/media/:objectName", streamProductImage);
 router.post("/", auth, vendorOrAdmin, upload.array("images", 5), createProduct);
 router.put("/:id", auth, vendorOrAdmin, upload.array("images", 5), updateProduct);
 router.delete("/:id", auth, vendorOrAdmin, deleteProduct);

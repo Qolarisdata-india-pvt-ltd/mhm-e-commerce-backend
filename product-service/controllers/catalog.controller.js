@@ -140,6 +140,22 @@ export const getAllCategories = async (req, res) => {
       return await categoryModel.findAll();
     });
 
+    // An empty list was cached before any categories existed. Do not keep serving it.
+    if (!Array.isArray(categories) || categories.length === 0) {
+      const fresh = await categoryModel.findAll();
+      if (fresh.length > 0) {
+        try {
+          const redis = (await import("../config/redis.js")).default;
+          if (redis.status === "ready") {
+            await redis.set(cacheKey, JSON.stringify(fresh), "EX", 86400);
+          }
+        } catch (cacheError) {
+          console.error("Category cache refresh failed:", cacheError.message);
+        }
+      }
+      return res.json(fresh);
+    }
+
     res.json(categories);
   } catch (err) {
     // FIX: Handled the exception by logging it

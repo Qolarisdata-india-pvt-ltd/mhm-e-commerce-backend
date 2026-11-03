@@ -4,7 +4,7 @@ import deliveryBoyModel from "../models/deliveryBoy.js";
 
 export const setShippingRate = async (req, res) => {
   try {
-    const { areaName, rate, isActive } = req.body;
+    const { areaName, rate, isActive, id } = req.body;
 
     if (!areaName || rate === undefined) {
       return res
@@ -19,6 +19,27 @@ export const setShippingRate = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Rate must be a positive number." });
+    }
+
+    if (id) {
+      const existing = await shippingRateModel.findByPk(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Shipping rate not found." });
+      }
+      const clash = await shippingRateModel.findOne({
+        where: { areaName: cleanArea },
+      });
+      if (clash && clash.id !== existing.id) {
+        return res
+          .status(409)
+          .json({ message: "Another area already uses this name." });
+      }
+      existing.areaName = cleanArea;
+      existing.rate = cleanRate;
+      if (isActive !== undefined) existing.isActive = isActive;
+      await existing.save();
+      await safeDeleteCache(["shipping_rates:all", "shipping_rates:active"]);
+      return res.json({ message: "Shipping Rate Updated", data: existing });
     }
 
     const defaults = { rate: cleanRate };
@@ -144,7 +165,7 @@ export const getShippingCharge = async (req, res) => {
   try {
     const { area } = req.query;
 
-    if (!area) return res.json({ rate: 0 });
+    if (!area) return res.json({ rate: 0, available: false });
 
     const cleanArea = area.trim();
 
@@ -152,7 +173,9 @@ export const getShippingCharge = async (req, res) => {
       where: { areaName: cleanArea, isActive: true },
     });
 
-    res.json({ rate: rateRecord ? rateRecord.rate : 0 });
+    if (!rateRecord) return res.json({ rate: 0, available: false });
+
+    res.json({ rate: Number(rateRecord.rate), available: true });
   } catch (err) {
     console.error("Rate Fetch Error:", err);
     res.status(500).json({ message: "Failed to fetch rate" });

@@ -10,6 +10,8 @@ const address = sequelize.define(
     state: { type: DataTypes.STRING, allowNull: false },
     city: { type: DataTypes.STRING, allowNull: false },
     area: { type: DataTypes.STRING, allowNull: false },
+    recipientName: { type: DataTypes.STRING, allowNull: true },
+    recipientPhone: { type: DataTypes.STRING, allowNull: true },
     isDefault: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,

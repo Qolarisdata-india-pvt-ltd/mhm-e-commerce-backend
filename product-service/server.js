@@ -18,6 +18,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/products", productRoutes);
 
 app.use((err, req, res, next) => {
+  if (err?.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({ message: "Each image must be 5MB or smaller." });
+  }
+  if (err?.name === "MulterError") {
+    return res.status(400).json({ message: err.message });
+  }
   console.error("Unhandled Product Service Error:", err.stack);
   res.status(500).json({
     message: "An internal server error occurred",

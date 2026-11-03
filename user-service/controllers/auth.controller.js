@@ -16,7 +16,14 @@ initBucket(BUCKET_NAME);
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 const registerSchema = z.object({
-  name: z.string().min(1, { message: "Name is required" }),
+  name: z
+    .string()
+    .trim()
+    .min(4, { message: "Name must be at least 4 characters" })
+    .max(20, { message: "Name cannot exceed 20 characters" })
+    .refine((val) => /^[A-Za-z][A-Za-z\s]{3,19}$/.test(val), {
+      message: "Name must be 4-20 letters and spaces only",
+    }),
 
   // FIXED: Using .refine() to bypass the SonarQube .email() parameter warning
   email: z.string().refine((val) => EMAIL_REGEX.test(val), { 
@@ -24,8 +31,8 @@ const registerSchema = z.object({
   }),
 
   // FIXED: Using .refine() to bypass the SonarQube .regex() parameter warning
-  phone: z.string().refine((val) => /^\d{10}$/.test(val), { 
-    message: "Phone number must be exactly 10 digits" 
+  phone: z.string().refine((val) => /^[6-9]\d{9}$/.test(val), { 
+    message: "Enter a valid 10-digit mobile number starting with 6-9" 
   }),
 
   password: z

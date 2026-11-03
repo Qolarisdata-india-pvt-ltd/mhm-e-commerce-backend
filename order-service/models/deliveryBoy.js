@@ -46,6 +46,23 @@ const deliveryBoy = sequelize.define(
       type: DataTypes.JSON,
       defaultValue: [],
       allowNull: false,
+      get() {
+        const raw = this.getDataValue("assignedAreas");
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === "string") {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed;
+          } catch {
+            /* stored as comma-separated text */
+          }
+          return raw
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean);
+        }
+        return [];
+      },
     },
     maxOrders: {
       type: DataTypes.INTEGER,

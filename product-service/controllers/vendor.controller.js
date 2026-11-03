@@ -115,8 +115,8 @@ export const updateProduct = async (req, res) => {
         const newUrls = await Promise.all(
           req.files.map((file) => uploadImageToMinio(file)),
         );
-        const currentImages = product.images || [];
-        product.images = [...currentImages, ...newUrls];
+        product.set("images", newUrls);
+        product.changed("images", true);
       } catch (err) {
         console.error("Image upload error during update:", err.message);
         return res.status(500).json({ message: "Image upload failed" });
