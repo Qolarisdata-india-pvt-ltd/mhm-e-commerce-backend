@@ -1,8 +1,30 @@
 import productModel from "../models/product.js";
 import categoryModel from "../models/category.js";
 import { Op } from "sequelize";
+import sequelize from "../config/db.js";
+import redis from "../config/redis.js";
 import { fetchWithCache } from "../utils/redisWrapper.js";
 import { z } from "zod";
+
+const CATEGORY_CACHE_KEY = "categories:v2";
+let parentColumnReady = false;
+
+const ensureParentColumn = async () => {
+  if (parentColumnReady) return;
+  const [column] = await sequelize.query(
+    "SHOW COLUMNS FROM `categories` LIKE 'parentId'",
+  );
+  if (!column.length) {
+    await sequelize.query(
+      "ALTER TABLE `categories` ADD COLUMN `parentId` INT NULL",
+    );
+  }
+  parentColumnReady = true;
+};
+
+const categoryInclude = [
+  { model: categoryModel, as: "parent", attributes: ["id", "name"] },
+];
 
 const catalogQuerySchema = z.object({
   search: z.string().optional(),
@@ -89,10 +111,9 @@ export const getProducts = async (req, res) => {
         include: [
           {
             model: categoryModel,
-            attributes: ["name"],
-            where:
-              category && category !== "all" ? { name: category } : undefined,
-            // FIX: Removed unnecessary boolean literals ternary
+            attributes: ["id", "name", "parentId"],
+            include: categoryInclude,
+            where: await categoryFilter(category),
             required: Boolean(
               category && category !== "all" && category !== "All",
             ),
@@ -118,7 +139,7 @@ export const getSingleProduct = async (req, res) => {
 
     const product = await fetchWithCache(cacheKey, 3600, async () => {
       return await productModel.findByPk(id, {
-        include: { model: categoryModel },
+        include: { model: categoryModel, include: categoryInclude },
       });
     });
 
@@ -132,17 +153,69 @@ export const getSingleProduct = async (req, res) => {
   }
 };
 
+const categoryFilter = async (category) => {
+  if (!category || category === "all" || category === "All") return undefined;
+  await ensureParentColumn();
+  const matches = await categoryModel.findAll({
+    where: { name: category },
+    include: [{ model: categoryModel, as: "subcategories", attributes: ["id"] }],
+  });
+  const ids = matches.flatMap((row) => [
+    row.id,
+    ...(row.subcategories || []).map((child) => child.id),
+  ]);
+  return { id: { [Op.in]: ids.length ? ids : [0] } };
+};
+
+export const createCategory = async (req, res) => {
+  try {
+    await ensureParentColumn();
+    const name = String(req.body?.name || "").trim();
+    const parentId = req.body?.parentId ? Number(req.body.parentId) : null;
+    if (name.length < 2) {
+      return res.status(400).json({ message: "Enter a category name." });
+    }
+    if (parentId) {
+      const parent = await categoryModel.findByPk(parentId);
+      if (!parent || parent.parentId) {
+        return res.status(400).json({
+          message: "Choose a top-level category for this subcategory.",
+        });
+      }
+    }
+    const existing = await categoryModel.findOne({
+      where: { name, parentId: parentId || null },
+    });
+    if (existing) {
+      return res.status(409).json({ message: "This category already exists." });
+    }
+    const created = await categoryModel.create({ name, parentId: parentId || null });
+    if (redis.status === "ready") await redis.del(CATEGORY_CACHE_KEY);
+    res.status(201).json(created);
+  } catch (error) {
+    console.error("Create category error:", error.message);
+    res.status(500).json({ message: "Failed to create category" });
+  }
+};
+
 export const getAllCategories = async (req, res) => {
   try {
-    const cacheKey = "categories:all";
+    await ensureParentColumn();
+    const cacheKey = CATEGORY_CACHE_KEY;
 
     const categories = await fetchWithCache(cacheKey, 86400, async () => {
-      return await categoryModel.findAll();
+      return await categoryModel.findAll({
+        include: categoryInclude,
+        order: [["name", "ASC"]],
+      });
     });
 
     // An empty list was cached before any categories existed. Do not keep serving it.
     if (!Array.isArray(categories) || categories.length === 0) {
-      const fresh = await categoryModel.findAll();
+      const fresh = await categoryModel.findAll({
+        include: categoryInclude,
+        order: [["name", "ASC"]],
+      });
       if (fresh.length > 0) {
         try {
           const redis = (await import("../config/redis.js")).default;

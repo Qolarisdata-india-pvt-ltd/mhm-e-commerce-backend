@@ -1,10 +1,38 @@
 import shippingRateModel from "../models/shippingRate.js";
 import { fetchWithCache, safeDeleteCache } from "../utils/redisWrapper.js";
 import deliveryBoyModel from "../models/deliveryBoy.js";
+import orderModel from "../models/order.js";
+
+const renameAreaReferences = async (previousName, nextName) => {
+  const boys = await deliveryBoyModel.findAll();
+  for (const boy of boys) {
+    const areas = Array.isArray(boy.assignedAreas) ? boy.assignedAreas : [];
+    if (!areas.includes(previousName)) continue;
+    boy.assignedAreas = areas.map((area) =>
+      area === previousName ? nextName : area,
+    );
+    boy.changed("assignedAreas", true);
+    await boy.save();
+  }
+
+  await orderModel.update(
+    { assignedArea: nextName },
+    { where: { assignedArea: previousName } },
+  );
+
+  try {
+    await orderModel.sequelize.query(
+      "UPDATE ecom_customers.addresses SET area = ? WHERE area = ?",
+      { replacements: [nextName, previousName] },
+    );
+  } catch (error) {
+    console.error("Address area rename skipped:", error.message);
+  }
+};
 
 export const setShippingRate = async (req, res) => {
   try {
-    const { areaName, rate, isActive, id } = req.body;
+    const { areaName, rate, isActive, id, previousAreaName } = req.body;
 
     if (!areaName || rate === undefined) {
       return res
@@ -21,8 +49,16 @@ export const setShippingRate = async (req, res) => {
         .json({ message: "Rate must be a positive number." });
     }
 
-    if (id) {
-      const existing = await shippingRateModel.findByPk(id);
+    const recordId = id;
+    const previousName = String(previousAreaName || "").trim();
+    const existingByPrevious = !recordId && previousName
+      ? await shippingRateModel.findOne({ where: { areaName: previousName } })
+      : null;
+
+    if (recordId || existingByPrevious) {
+      const existing = recordId
+        ? await shippingRateModel.findByPk(recordId)
+        : existingByPrevious;
       if (!existing) {
         return res.status(404).json({ message: "Shipping rate not found." });
       }
@@ -34,10 +70,14 @@ export const setShippingRate = async (req, res) => {
           .status(409)
           .json({ message: "Another area already uses this name." });
       }
+      const previousName = existing.areaName;
       existing.areaName = cleanArea;
       existing.rate = cleanRate;
       if (isActive !== undefined) existing.isActive = isActive;
       await existing.save();
+      if (previousName !== cleanArea) {
+        await renameAreaReferences(previousName, cleanArea);
+      }
       await safeDeleteCache(["shipping_rates:all", "shipping_rates:active"]);
       return res.json({ message: "Shipping Rate Updated", data: existing });
     }

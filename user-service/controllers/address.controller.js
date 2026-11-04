@@ -1,6 +1,8 @@
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 import addressModel from "../models/address.js";
 import { z } from "zod";
+
+const saveInProgress = new Set();
 
 const addressSchema = z.object({
   addressLine1: z.string().min(1, "Address line 1 is required"),
@@ -63,11 +65,24 @@ function recipientFrom(data) {
 }
 
 export const addAddress = async (req, res) => {
+  const userId = req.user?.id;
+  let ownsLock = false;
   try {
     const parseResult = addressSchema.safeParse(req.body);
     if (!parseResult.success) {
-      return res.status(400).json({ message: "Validation failed", errors: parseResult.error.errors });
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parseResult.error.issues || parseResult.error.errors || [],
+      });
     }
+
+    if (saveInProgress.has(userId)) {
+      return res.status(409).json({
+        message: "This address is already being saved. Please wait.",
+      });
+    }
+    saveInProgress.add(userId);
+    ownsLock = true;
 
     const { addressLine1, state, city, area, isDefault } = parseResult.data;
     const recipient = recipientFrom(parseResult.data);
@@ -78,15 +93,31 @@ export const addAddress = async (req, res) => {
     await ensureRecipientColumns();
     await ensureAddressIdentity();
 
-    const addressCount = await addressModel.count({ where: { userId: req.user.id } });
+    const duplicate = await addressModel.findOne({
+      where: {
+        userId,
+        addressLine1,
+        area,
+        recipientPhone: recipient.recipientPhone,
+        createdAt: { [Op.gte]: new Date(Date.now() - 15000) },
+      },
+    });
+    if (duplicate) {
+      return res.status(200).json({
+        message: "Address saved successfully",
+        address: duplicate,
+      });
+    }
+
+    const addressCount = await addressModel.count({ where: { userId } });
     const shouldBeDefault = addressCount === 0 ? true : isDefault;
 
     if (shouldBeDefault) {
-      await addressModel.update({ isDefault: false }, { where: { userId: req.user.id } });
+      await addressModel.update({ isDefault: false }, { where: { userId } });
     }
 
     const newAddress = await addressModel.create({
-      userId: req.user.id,
+      userId,
       addressLine1,
       state,
       city,
@@ -99,6 +130,8 @@ export const addAddress = async (req, res) => {
     res.status(201).json({ message: "Address saved successfully", address: newAddress });
   } catch (error) {
     res.status(500).json({ message: "Failed to save address", error: error.message });
+  } finally {
+    if (ownsLock) saveInProgress.delete(userId);
   }
 };
 

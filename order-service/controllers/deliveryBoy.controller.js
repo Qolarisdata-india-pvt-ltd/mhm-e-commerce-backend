@@ -7,6 +7,30 @@ import shippingRateModel from "../models/shippingRate.js";
 import sequelize from "../config/db.js";
 import { fetchWithCache, safeDeleteCache } from "../utils/redisWrapper.js";
 
+const ACTIVE_ASSIGNMENT_STATUSES = ["ASSIGNED", "PICKED", "OUT_FOR_DELIVERY"];
+
+const withActiveAssignmentCounts = async (boys) => {
+  const counts = await deliveryAssignmentModel.findAll({
+    attributes: [
+      "deliveryBoyId",
+      [sequelize.fn("COUNT", sequelize.col("id")), "activeCount"],
+    ],
+    where: { status: { [Op.in]: ACTIVE_ASSIGNMENT_STATUSES } },
+    group: ["deliveryBoyId"],
+    raw: true,
+  });
+  const countByBoy = new Map(
+    counts.map((row) => [Number(row.deliveryBoyId), Number(row.activeCount)]),
+  );
+  return boys.map((boy) => {
+    const plain = typeof boy.toJSON === "function" ? boy.toJSON() : boy;
+    return {
+      ...plain,
+      activeAssignmentCount: countByBoy.get(Number(plain.id)) || 0,
+    };
+  });
+};
+
 export const getAllDeliveryBoys = async (req, res) => {
   try {
     const boys = await fetchWithCache("delivery_boys:all", 3600, async () => {
@@ -14,7 +38,7 @@ export const getAllDeliveryBoys = async (req, res) => {
         attributes: { exclude: ["password"] },
       });
     });
-    res.json(boys);
+    res.json(await withActiveAssignmentCounts(boys));
   } catch (err) {
     console.error("Error fetching delivery boys:", err.message);
     res.status(500).json({ message: "Failed to fetch delivery boys" });
@@ -24,6 +48,25 @@ export const getAllDeliveryBoys = async (req, res) => {
 export const createDeliveryBoy = async (req, res) => {
   try {
     const { name, email, phone, password, maxOrders, assignedAreas } = req.body;
+    const nameValue = String(name || "").trim();
+    const phoneValue = String(phone || "").trim();
+
+    if (!nameValue) {
+      return res.status(400).json({ message: "Name is required" });
+    }
+    if (!/^[A-Za-z][A-Za-z\s]{3,19}$/.test(nameValue)) {
+      return res.status(400).json({
+        message: "Name must be 4-20 letters and spaces only",
+      });
+    }
+    if (!phoneValue) {
+      return res.status(400).json({ message: "Mobile number is required" });
+    }
+    if (!/^[6-9]\d{9}$/.test(phoneValue)) {
+      return res.status(400).json({
+        message: "Enter a valid 10-digit mobile number starting with 6-9",
+      });
+    }
 
     if (assignedAreas && assignedAreas.length > 0) {
       const validAreas = await shippingRateModel.findAll({
@@ -39,9 +82,9 @@ export const createDeliveryBoy = async (req, res) => {
     }
 
     const newBoy = await deliveryBoyModel.create({
-      name,
+      name: nameValue,
       email,
-      phone,
+      phone: phoneValue,
       password,
       maxOrders,
       assignedAreas,
@@ -335,7 +378,7 @@ export const getDeliveryBoyOrders = async (req, res) => {
       include: [
         {
           model: orderModel,
-          required: true,
+          required: false,
           attributes: [
             "id",
             "amount",
@@ -363,7 +406,7 @@ export const getDeliveryBoyOrders = async (req, res) => {
       ...fetchOptions,
       where: {
         ...fetchOptions.where,
-        status: { [Op.or]: ["ASSIGNED", "PICKED", "OUT_FOR_DELIVERY"] },
+        status: { [Op.in]: ACTIVE_ASSIGNMENT_STATUSES },
       },
     });
 
@@ -379,6 +422,23 @@ export const getDeliveryBoyOrders = async (req, res) => {
     });
 
     const formatOrder = (a) => {
+      if (!a.Order) {
+        return {
+          assignmentId: a.id,
+          assignmentStatus: a.status,
+          type: a.reason === "RETURN_PICKUP" ? "RETURN" : "DELIVERY",
+          cashToCollect: 0,
+          id: a.orderId,
+          amount: 0,
+          paymentMethod: "",
+          payment: false,
+          status: a.status,
+          date: a.createdAt,
+          address: null,
+          assignedArea: "N/A",
+          OrderItems: [],
+        };
+      }
       const isReturnTask = a.reason === "RETURN_PICKUP";
 
       const isCodUnsettled =
@@ -417,6 +477,7 @@ export const getDeliveryBoyOrders = async (req, res) => {
     };
 
     const response = {
+      activeCount: activeAssignments.length,
       active: activeAssignments.map(formatOrder),
       history: historyAssignments.map(formatOrder),
     };

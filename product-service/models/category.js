@@ -13,8 +13,15 @@ const category = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    parentId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   { tableName: "categories" },
 );
+
+category.belongsTo(category, { as: "parent", foreignKey: "parentId" });
+category.hasMany(category, { as: "subcategories", foreignKey: "parentId" });
 
 export default category;

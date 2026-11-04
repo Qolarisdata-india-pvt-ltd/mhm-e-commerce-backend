@@ -5,7 +5,7 @@ import admin from "../middleware/admin.middleware.js";
 import vendorOrAdmin from "../middleware/vendor-or-admin.middleware.js";
 import upload from "../middleware/upload.js";
 
-import { getProducts, getSingleProduct, getAllCategories, getProductsBatch } from "../controllers/catalog.controller.js";
+import { getProducts, getSingleProduct, getAllCategories, getProductsBatch, createCategory } from "../controllers/catalog.controller.js";
 import { streamProductImage } from "../controllers/media.controller.js";
 
 import { createProduct, updateProduct, deleteProduct, getVendorProducts, getProductsByVendorId } from "../controllers/vendor.controller.js";
@@ -20,6 +20,7 @@ const router = express.Router();
 
 router.get("/", getProducts);
 router.get("/categories", getAllCategories);
+router.post("/categories", auth, admin, createCategory);
 
 
 router.post("/inventory/reserve", internalAuth, reserveStock);

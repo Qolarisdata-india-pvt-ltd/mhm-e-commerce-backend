@@ -9,6 +9,7 @@ import axios from "axios";
 import redis from "../config/redis.js";
 import { rollbackQueue } from "../services/sagaQueue.js";
 import razorpay from "../config/razorpay.js";
+import { notifyOrderPlaced } from "../services/orderNotification.js";
 
 const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL;
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL;
@@ -329,7 +330,12 @@ export const checkout = async (req, res) => {
         );
       }
 
-      shippingCharge = Number.parseFloat(rateRecord.rate);
+      const lookedUpCharge = Number.parseFloat(rateRecord.rate);
+      const quotedCharge = Number(req.body.shippingCharge);
+      shippingCharge =
+        Number.isFinite(quotedCharge) && quotedCharge >= 0
+          ? quotedCharge
+          : lookedUpCharge;
       finalPayableAmount = Number.parseFloat(amount) + shippingCharge;
 
       order = await orderModel.create(
@@ -389,9 +395,28 @@ export const checkout = async (req, res) => {
 
     await redis.del(idempotencyKey);
 
+    const transactionId =
+      paymentMethod === "RAZORPAY"
+        ? razorpayOrderData?.id
+        : `COD-${order.id}`;
+    let notifications = { email: "not_configured", sms: "not_configured" };
+    try {
+      notifications = await notifyOrderPlaced({
+        orderId: order.id,
+        transactionId,
+        amount: finalPayableAmount,
+        email: req.user?.email || address?.email || null,
+        phone: address?.phone || req.user?.phone || null,
+      });
+    } catch (notifyError) {
+      console.error("Order notification failed:", notifyError.message);
+    }
+
     res.status(201).json({
       message: "Order placed successfully",
       orderId: order.id,
+      transactionId,
+      notifications,
       shippingCharge: shippingCharge,
       payableAmount: finalPayableAmount,
       razorpayOrder: razorpayOrderData,

@@ -26,9 +26,13 @@ const registerSchema = z.object({
     }),
 
   // FIXED: Using .refine() to bypass the SonarQube .email() parameter warning
-  email: z.string().refine((val) => EMAIL_REGEX.test(val), { 
-    message: "Invalid email format" 
-  }),
+  email: z
+    .string()
+    .trim()
+    .refine((val) => val === "" || EMAIL_REGEX.test(val), {
+      message: "Please enter a valid email address",
+    })
+    .optional(),
 
   // FIXED: Using .refine() to bypass the SonarQube .regex() parameter warning
   phone: z.string().refine((val) => /^[6-9]\d{9}$/.test(val), { 
@@ -74,18 +78,24 @@ export const register = async (req, res) => {
     const parseResult = registerSchema.safeParse(req.body);
 
     if (!parseResult.success) {
+      const issues = parseResult.error.issues || parseResult.error.errors || [];
+      const detail = issues
+        .map((issue) => issue.message)
+        .filter(Boolean)
+        .join(". ");
       return res.status(400).json({
-        message: "Validation failed",
-        errors: parseResult.error.errors,
+        message: detail || "Please correct the highlighted fields.",
+        errors: issues,
       });
     }
 
     const { name, email, phone, password } = parseResult.data;
+    const cleanEmail = email ? email.trim() : null;
 
-    const [existingPhone, existingEmail] = await Promise.all([
-      userModel.findOne({ where: { phone } }),
-      userModel.findOne({ where: { email } }),
-    ]);
+    const existingPhone = await userModel.findOne({ where: { phone } });
+    const existingEmail = cleanEmail
+      ? await userModel.findOne({ where: { email: cleanEmail } })
+      : null;
 
     if (existingPhone)
       return res
@@ -99,9 +109,20 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    if (!cleanEmail) {
+      const table = await userModel.sequelize
+        .getQueryInterface()
+        .describeTable("users");
+      if (table.email && !table.email.allowNull) {
+        await userModel.sequelize.query(
+          "ALTER TABLE `users` MODIFY `email` VARCHAR(255) NULL",
+        );
+      }
+    }
+
     const user = await userModel.create({
       name,
-      email,
+      email: cleanEmail,
       phone,
       password: hashedPassword,
       role: "user",
