@@ -25,16 +25,23 @@ const getSalesFilter = (vendorId = null, dateFilter = {}) => {
   return { ...where, ...dateFilter };
 };
 
+const parseLocalDay = (value, endOfDay) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
+  const date = new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00"}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 export const getAdminStats = async (req, res) => {
   try {
     const { start, end } = req.query;
 
     let dateFilter = {};
     if (start && end) {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      endDate.setHours(23, 59, 59, 999);
-      dateFilter = { createdAt: { [Op.between]: [startDate, endDate] } };
+      const startDate = parseLocalDay(start, false);
+      const endDate = parseLocalDay(end, true);
+      if (startDate && endDate && startDate <= endDate) {
+        dateFilter = { createdAt: { [Op.between]: [startDate, endDate] } };
+      }
     }
 
     const salesData = await orderModel.findAll({

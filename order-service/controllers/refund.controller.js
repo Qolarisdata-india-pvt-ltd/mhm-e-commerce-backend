@@ -586,6 +586,8 @@ export const getAllReturnOrdersAdmin = async (req, res) => {
         paymentMethod: item.Order.paymentMethod,
         codPaymentMode: item.Order.codPaymentMode,
         reason: item.returnReason,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
         lastUpdated: item.updatedAt,
         customerName: item.Order.address?.fullName || "Guest",
         customerPhone: item.Order.address?.phone || "N/A",

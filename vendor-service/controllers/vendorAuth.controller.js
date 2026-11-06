@@ -9,9 +9,26 @@ import { fetchWithCache, safeDeleteCache } from "../utils/redisWrapper.js";
 import { sendTokenCookie, clearTokenCookie } from "../utils/cookie.util.js";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const PERSON_NAME = /^[A-Za-z][A-Za-z\s.]{2,49}$/;
+const BUSINESS_NAME = /^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9\s&.'-]{1,79}$/;
+
+const namedField = (requiredMessage, invalidMessage, pattern) =>
+  z.string().trim().superRefine((value, ctx) => {
+    if (!value) {
+      ctx.addIssue({ code: "custom", message: requiredMessage });
+      return;
+    }
+    if (!pattern.test(value)) {
+      ctx.addIssue({ code: "custom", message: invalidMessage });
+    }
+  });
 
 const registerSchema = z.object({
-  name: z.string().min(1, { message: "Name is required" }),
+  name: namedField(
+    "Full Name is required",
+    "Enter a valid full name using letters and spaces",
+    PERSON_NAME,
+  ),
 
   // FIXED: Using .refine() to bypass the SonarQube .email() parameter warning
   email: z.string().refine((val) => EMAIL_REGEX.test(val), {
@@ -27,7 +44,11 @@ const registerSchema = z.object({
     .string()
     .min(6, { message: "Password must be at least 6 characters" }),
 
-  businessName: z.string().min(1, { message: "Business name is required" }),
+  businessName: namedField(
+    "Business Name is required",
+    "Enter a valid business name",
+    BUSINESS_NAME,
+  ),
 
   businessType: z.string().min(1, { message: "Business type is required" }),
 
@@ -56,9 +77,11 @@ const registerSchema = z.object({
     .optional()
     .or(z.literal("")),
 
-  bankAccountHolderName: z
-    .string()
-    .min(1, { message: "Account holder name is required" }),
+  bankAccountHolderName: namedField(
+    "Account Holder Name is required",
+    "Enter a valid account holder name using letters and spaces",
+    PERSON_NAME,
+  ),
 
   bankAccountNumber: z
     .string()
@@ -89,7 +112,7 @@ export const register = async (req, res) => {
     if (!parseResult.success) {
       return res.status(400).json({
         message: "Validation failed",
-        errors: parseResult.error.errors,
+        errors: parseResult.error.issues || [],
       });
     }
 
