@@ -30,7 +30,8 @@ router.post("/inventory/ship", internalAuth, shipStock);
 
 
 router.get("/vendor/my-products", auth, vendor, getVendorProducts);
-router.get("/vendor/inventory", auth, vendor, getVendorInventory); 
+router.get("/vendor/inventory", auth, vendor, getVendorInventory);
+router.put("/vendor/inventory/update", auth, vendor, updateWarehouseStock);
 
 
 router.get("/vendor/:vendorId", auth, admin, getProductsByVendorId);

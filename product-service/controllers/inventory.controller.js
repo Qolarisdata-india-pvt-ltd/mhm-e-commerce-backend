@@ -107,8 +107,19 @@ export const updateWarehouseStock = async (req, res) => {
     const product = await productModel.findByPk(productId);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
+    // Vendors may only update warehouse qty on their own products.
+    if (req.user?.role === "vendor" && product.vendorId !== req.user.id) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
     const newWarehouse = Number.parseInt(warehouseStock, 10);
     const total = Number.parseInt(product.totalStock, 10);
+
+    if (Number.isNaN(newWarehouse) || newWarehouse < 0) {
+      return res
+        .status(400)
+        .json({ message: "Warehouse stock must be a non-negative number" });
+    }
 
     if (newWarehouse > total) {
       return res
