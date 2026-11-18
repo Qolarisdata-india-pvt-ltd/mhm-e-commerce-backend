@@ -17,7 +17,22 @@ const order = sequelize.define(
       defaultValue: 0,
       allowNull: false,
     },
-    address: { type: DataTypes.JSON, allowNull: false },
+    address: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      // Column is longtext in MySQL; ensure callers always get an object.
+      get() {
+        const raw = this.getDataValue("address");
+        if (!raw) return {};
+        if (typeof raw === "object") return raw;
+        try {
+          const parsed = JSON.parse(raw);
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch {
+          return {};
+        }
+      },
+    },
     assignedArea: {
       type: DataTypes.STRING,
       allowNull: false,

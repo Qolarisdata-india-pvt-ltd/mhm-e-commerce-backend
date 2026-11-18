@@ -570,6 +570,15 @@ export const getAllReturnOrdersAdmin = async (req, res) => {
       }
 
       const product = productMap[item.productId];
+      let orderAddress = item.Order.address;
+      if (typeof orderAddress === "string") {
+        try {
+          orderAddress = JSON.parse(orderAddress);
+        } catch {
+          orderAddress = {};
+        }
+      }
+      orderAddress = orderAddress && typeof orderAddress === "object" ? orderAddress : {};
 
       return {
         itemId: item.id,
@@ -589,8 +598,13 @@ export const getAllReturnOrdersAdmin = async (req, res) => {
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
         lastUpdated: item.updatedAt,
-        customerName: item.Order.address?.fullName || "Guest",
-        customerPhone: item.Order.address?.phone || "N/A",
+        customerName:
+          orderAddress.fullName ||
+          orderAddress.recipientName ||
+          orderAddress.name ||
+          "Customer",
+        customerPhone:
+          orderAddress.phone || orderAddress.recipientPhone || "N/A",
         pickupBoy: boyName,
       };
     });

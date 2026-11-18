@@ -457,6 +457,10 @@ export const getDeliveryBoyOrders = async (req, res) => {
           parsedAddress = JSON.parse(parsedAddress);
       } catch (e) {
         console.warn("Failed to parse address JSON:", e.message);
+        parsedAddress = {};
+      }
+      if (!parsedAddress || typeof parsedAddress !== "object") {
+        parsedAddress = {};
       }
 
       return {
@@ -465,12 +469,23 @@ export const getDeliveryBoyOrders = async (req, res) => {
         type: isReturnTask ? "RETURN" : "DELIVERY",
         cashToCollect: isCodUnsettled ? a.Order.amount : 0,
         id: a.Order.id,
+        orderId: a.Order.id,
         amount: a.Order.amount,
         paymentMethod: a.Order.paymentMethod,
         payment: a.Order.payment,
         status: a.Order.status,
         date: a.Order.date,
         address: parsedAddress,
+        customerName:
+          parsedAddress.fullName ||
+          parsedAddress.recipientName ||
+          parsedAddress.name ||
+          "Customer",
+        phone:
+          parsedAddress.phone ||
+          parsedAddress.recipientPhone ||
+          parsedAddress.mobile ||
+          "",
         assignedArea: a.Order.assignedArea || parsedAddress?.area || "N/A",
         OrderItems: a.Order.OrderItems,
       };

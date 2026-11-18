@@ -4,6 +4,27 @@ import orderModel from "../models/order.js";
 import orderItemModel from "../models/orderItem.js";
 import axios from "axios";
 
+const parseAddress = (address) => {
+  if (!address) return {};
+  if (typeof address === "object") return address;
+  try {
+    const parsed = JSON.parse(address);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const resolveCustomerName = (address = {}) =>
+  address.fullName ||
+  address.recipientName ||
+  address.name ||
+  address.customerName ||
+  null;
+
+const resolveCustomerPhone = (address = {}) =>
+  address.phone || address.recipientPhone || address.mobile || null;
+
 export const getMyTasks = async (req, res) => {
   try {
     const boyId = req.user.id;
@@ -128,6 +149,9 @@ export const getMyTasks = async (req, res) => {
           ? task.Order.amount
           : 0;
       const cashToRefund = 0;
+      const address = parseAddress(task.Order.address);
+      const customerName = resolveCustomerName(address);
+      const phone = resolveCustomerPhone(address);
 
       const formattedTask = {
         assignmentId: task.id,
@@ -138,9 +162,9 @@ export const getMyTasks = async (req, res) => {
         amount: task.Order.amount,
         paymentMethod: task.Order.paymentMethod,
         orderId: task.Order.id,
-        customerName: task.Order.address?.fullName || "Guest",
-        address: task.Order.address,
-        phone: task.Order.address?.phone,
+        customerName: customerName || "Customer",
+        address,
+        phone: phone || "",
         date: task.Order.createdAt,
         updatedAt: task.Order.updatedAt,
         items: displayItems,
